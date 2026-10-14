@@ -12,6 +12,27 @@
   };
 
   const SCREENS = ['loading', 'menu', 'howto', 'settings', 'pause', 'end'];
+  const MAP_ORDER = ['barilan', 'kvish4', 'gesher'];
+
+  // התקדמות: כוכבים לכל צד/מפה/קושי. מפה נפתחת אחרי ניצחון במפה שלפניה (באותו צד).
+  const Prog = {
+    data() { return store.get('prog', {}); },
+    stars(side, map, diff) { const d = this.data(); return ((d[side] || {})[map] || {})[diff] || 0; },
+    best(side, map) { const d = ((this.data()[side] || {})[map]) || {}; return Math.max(0, d.easy || 0, d.normal || 0, d.hard || 0); },
+    record(side, map, diff, stars) {
+      const d = this.data();
+      d[side] = d[side] || {}; d[side][map] = d[side][map] || {};
+      const before = d[side][map][diff] || 0;
+      if (stars > before) d[side][map][diff] = stars;
+      store.set('prog', d);
+      return stars > before;
+    },
+    unlocked(side, map) {
+      if (/[?&]unlock=1/.test(root.location.search || '')) return true;
+      const i = MAP_ORDER.indexOf(map);
+      return i <= 0 || this.best(side, MAP_ORDER[i - 1]) > 0;
+    }
+  };
   function showScr(id) { for (const s of SCREENS) $(s).classList.toggle('hidden', s !== id); }
 
   const G = {
@@ -91,7 +112,32 @@
       this.updateStartSum();
     },
 
+    // כפתורי המפות: כוכבים לפי הצד והקושי שנבחרו, ונעילה עד ניצחון במפה הקודמת
+    updateMapButtons() {
+      const names = { barilan: 'צומת בר אילן', kvish4: 'כביש 4', gesher: 'גשר המיתרים' };
+      document.querySelectorAll('#mapSeg .segBtn').forEach(b => {
+        const id = b.dataset.map, def = HM.MAP_DEFS[id];
+        const open = Prog.unlocked(this.side, id);
+        const st = Prog.stars(this.side, id, this.diff);
+        b.disabled = !open;
+        const span = b.querySelector('span');
+        if (!open) {
+          const prev = MAP_ORDER[MAP_ORDER.indexOf(id) - 1];
+          span.textContent = 'נפתח אחרי ניצחון ב' + names[prev];
+          b.title = 'נצחו קודם ב' + names[prev] + ' (בצד הזה)';
+        } else {
+          span.textContent = def.city + (st ? ' · ' + '★'.repeat(st) + '☆'.repeat(3 - st) : '');
+          b.title = def.blurb;
+        }
+      });
+      if (!Prog.unlocked(this.side, this.mapId)) {
+        this.mapId = 'barilan';
+        document.querySelectorAll('#mapSeg .segBtn').forEach(b => b.classList.toggle('active', b.dataset.map === 'barilan'));
+      }
+    },
+
     updateStartSum() {
+      this.updateMapButtons();
       const side = this.side === 'protest' ? 'מארגני ההפגנה' : 'מפקד המשטרה';
       const map = HM.MAP_DEFS[this.mapId] ? HM.MAP_DEFS[this.mapId].name : '';
       const diff = { easy: 'קל', normal: 'רגיל', hard: 'קשה' }[this.diff];
@@ -126,7 +172,7 @@
       const cam = this.stage.cam;
       if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
       else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
-      this.input.aimMega = false;
+      this.input.aim = null;
       this.camGoal = null;
       this.speed = 1; $('btnSpeed').textContent = '×1';
       $('hud').classList.remove('hidden');
@@ -172,10 +218,18 @@
         if (!r.ok) this.hud.alert('השופר עוד לא מוכן', 'info', 'shofar', 'shofarNo');
         return;
       }
+      if (k === 'bus') {
+        const Bs = w.BAL.protest.bus;
+        if (w.busCD > 0 || w.t < Bs.firstAt) { this.hud.alert('ההסעה עוד לא מוכנה', 'info', 'bus', 'busNo'); return; }
+        if (w.money.protest < Bs.cost) { this.hud.alert('אין מספיק כסף להסעה', 'info', 'bus', 'busNo'); return; }
+        this.input.aim = this.input.aim === 'bus' ? null : 'bus';
+        HM.Audio.click();
+        return;
+      }
       if (k === 'megaphone') {
         const Mg = w.BAL.police.megaphone;
         if (w.megaCD > 0 || w.t < Mg.firstAt) { this.hud.alert('הכריזה עוד לא מוכנה', 'info', 'megaphone', 'megaNo'); return; }
-        this.input.aimMega = !this.input.aimMega;
+        this.input.aim = this.input.aim === 'megaphone' ? null : 'megaphone';
         HM.Audio.click();
         if (this.tutorial && this.tutorial.step === 3 && this.side === 'police') this.setTut(4);
         return;
@@ -259,6 +313,18 @@
         [S.bought.protest, 'חוליות שהוזמנו']
       ];
       $('endStats').innerHTML = cells.map(c => `<div class="stat"><b>${c[0]}</b><span>${c[1]}</span></div>`).join('');
+      // התקדמות
+      let extra = '';
+      if (win) {
+        const mapIdx = MAP_ORDER.indexOf(w.map.id);
+        const nextMap = MAP_ORDER[mapIdx + 1];
+        const wasOpen = nextMap ? Prog.unlocked(this.side, nextMap) : true;
+        const better = Prog.record(this.side, w.map.id, this.diff, o.stars);
+        if (nextMap && !wasOpen && Prog.unlocked(this.side, nextMap)) extra = 'נפתחה מפה חדשה: ' + HM.MAP_DEFS[nextMap].name + '!';
+        else if (better) extra = 'שיא חדש במפה הזו!';
+      }
+      $('endUnlock').textContent = extra;
+      $('endUnlock').classList.toggle('hidden', !extra);
       showScr('end');
       HM.Audio.stopAll();
       HM.Audio.sting(win);

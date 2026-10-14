@@ -50,7 +50,7 @@
 
       // ---- קניות (בגלים: חוסכים ויוצאים כמה חוליות יחד) ----
       if (cfg.buy !== false && this.hasMore()) {
-        const order = ['bochurim', 'avrechim', 'bochurim', 'askan', 'avrechim'];
+        const order = ['bochurim', 'avrechim', 'bochurim', 'askan', 'avrechim', 'photographer'];
         const wave = Math.max(1, cfg.wave || 1);
         if (wave === 1 || w.money.protest >= wave * 135) {
           let n = 0;
@@ -63,6 +63,19 @@
           }
           if (n >= 2) w.events.push('wave', { n });
         }
+      }
+
+      // ---- הסעה: מגיעים מהצד הרחוק מהמשטרה ----
+      const Bs = w.BAL.protest.bus;
+      if (w.busCD <= 0 && w.t > Bs.firstAt + 30 && w.money.protest > Bs.cost + 120 && this.hasMore() && w.rng.next() < 0.3) {
+        const pb = w.map.bases.police;
+        let best = null, bd = -1;
+        for (const sp of this.spots) {
+          const s2 = w.map.nearestSidewalk(sp.x, sp.z);
+          const d = U.dist(s2.x, s2.z, pb.x, pb.z);
+          if (d > bd) { bd = d; best = s2; }
+        }
+        if (best && w.cmd('protest', { type: 'bus', x: best.x, z: best.z }).ok) this.bought += Bs.squads.length;
       }
 
       // ---- שופר ----
@@ -123,7 +136,7 @@
             const d = U.dist(c.x, c.z, pc.x, pc.z);
             if (p.type === 'horses' && d < 26) horseNear = true;
             if (p.type === 'cannon' && d < 20 && p.vehicle.state !== 'refill' && p.vehicle.state !== 'return') cannonNear = true;
-            if (p.type === 'patrol' && d < 14) copsNear++;
+            if ((p.type === 'patrol' || p.type === 'riot') && d < 14) copsNear++;
           }
           if (!s.moving && onRoad) {
             if (cannonNear && s.stance === 'sit' && this.opts.dodge !== false) {

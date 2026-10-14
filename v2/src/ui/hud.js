@@ -61,8 +61,8 @@
       box.innerHTML = '';
       this.cards = [];
       const list = this.side === 'protest'
-        ? [['bochurim', 'Z'], ['avrechim', 'X'], ['askan', 'C'], ['shofar', 'V']]
-        : [['patrol', 'Z'], ['horses', 'X'], ['cannon', 'C'], ['megaphone', 'V']];
+        ? [['bochurim', 'Z'], ['avrechim', 'X'], ['askan', 'C'], ['photographer', 'B'], ['bus', 'N'], ['shofar', 'V']]
+        : [['patrol', 'Z'], ['horses', 'X'], ['cannon', 'C'], ['riot', 'B'], ['officer', 'N'], ['megaphone', 'V']];
       for (const [k, key] of list) {
         const info = TX().UNITS[k];
         const el = document.createElement('button');
@@ -139,7 +139,13 @@
           const cd = w.megaCD, first = w.BAL.police.megaphone.firstAt - w.t;
           if (first > 0) { ok = false; why = `מוכנה בעוד ${Math.ceil(first)} שנ'`; }
           else if (cd > 0) { ok = false; why = `עוד ${Math.ceil(cd)} שנ'`; }
-          else why = this.g.input && this.g.input.aimMega ? 'בחרו מקום…' : 'מוכנה!';
+          else why = this.g.input && this.g.input.aim === 'megaphone' ? 'בחרו מקום…' : 'מוכנה!';
+        } else if (c.k === 'bus') {
+          const Bs = w.BAL.protest.bus, cd = w.busCD, first = Bs.firstAt - w.t;
+          if (first > 0) { ok = false; why = `מוכנה בעוד ${Math.ceil(first)} שנ'`; }
+          else if (cd > 0) { ok = false; why = `עוד ${Math.ceil(cd)} שנ'`; }
+          else if (w.money.protest < Bs.cost) { ok = false; why = `חסר ₪${Math.ceil(Bs.cost - w.money.protest)}`; }
+          else why = this.g.input && this.g.input.aim === 'bus' ? 'בחרו מקום…' : 'מוכנה!';
         } else if (c.k === 'shofar') {
           const cd = w.shofarCD, first = w.BAL.protest.shofar.firstAt - w.t;
           if (first > 0) { ok = false; why = `מוכן בעוד ${Math.ceil(first)} שנ'`; }
@@ -429,6 +435,23 @@
             break;
           case 'autoEngage':
             break;
+          case 'busIncoming':
+            if (mine === 'protest') this.alert(`ההסעה בדרך — מגיעה בעוד ${Math.round(e.eta)} שניות`, 'good', 'bus');
+            else { this.alert('אוטובוס מפגינים בדרך — שתי חוליות יירדו בעוד כמה שניות!', 'warn', 'bus', 'bus'); this.news(N.bus); }
+            break;
+          case 'busArrived':
+            this.bubble('הגענו!', e.x, e.z, '', 3.2, true);
+            if (mine === 'police') this.alert('אוטובוס הוריד מפגינים', 'warn', 'bus', 'busArr');
+            break;
+          case 'permitBlocked':
+            this.bubble(TX().pick(L.officer), e.x + 1.5, e.z + 1.5, 'cop', 3.2, true);
+            if (mine === 'protest') this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
+            else this.alert('הקצין שלכם ביטל את "יש לי אישור" של העסקן', 'good', 'officer', 'pblk');
+            break;
+          case 'tramBlocked':
+            this.news(N.tram);
+            this.alert('הרכבת הקלה תקועה — המד עולה מהר יותר!', mine === 'protest' ? 'good' : 'warn', 'news', 'tram');
+            break;
           case 'grab':
             if (Math.random() < 0.12) this.bubble(TX().pick(L.copGrab), e.x, e.z, 'cop', 3.1);
             break;
@@ -477,6 +500,11 @@
           case 'headline':
             if (e.reason === 'horseScandal') { this.news(N.horseScandal); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); this.alert('שערורייה: פרשים מול יושבים — המד קפץ!', mine === 'protest' ? 'good' : 'warn', 'news'); }
             else if (e.reason === 'askanArrest') { this.news(N.askanArrest); this.floater('+' + e.amount + ' כותרות', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
+            else if (e.reason === 'photoArrest') { this.news(N.photoArrest); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
+            else if (e.reason === 'documented') {
+              this.floater('+' + e.amount + ' תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
+              if (!this.newsDone.has('doc')) { this.newsDone.add('doc'); this.news(N.documented); }
+            }
             break;
           case 'nearMiss':
             this.bubble(TX().pick(L.nearMiss), e.x, e.z);
@@ -592,7 +620,7 @@
           add(busy ? `ממלאת מים (${Math.round(V.tank / this.w.BAL.police.cannon.tank * 100)}%)` : 'חזרה למילוי מים', 'R', 'המכת"זית נוסעת לתחנה וממלאת את המיכל עד הסוף (12 שניות). כדאי כשהמיכל כמעט ריק.', () => this.g.input.refill(), busy);
         }
         const foot = sqs.filter(s => !s.vehicle);
-        if (foot.length) add('לרדת למדרכה', 'B', 'החוליה עוזבת את מה שהיא עושה ועומדת על המדרכה הקרובה — שלא תחסום בעצמה את התנועה.', () => this.g.input.toSidewalk());
+        if (foot.length) add('לרדת למדרכה', 'G', 'החוליה עוזבת את מה שהיא עושה ועומדת על המדרכה הקרובה — שלא תחסום בעצמה את התנועה.', () => this.g.input.toSidewalk());
         this.selExplainDefault = sqs.length === 1 ? TX().POLICE_HELP[sqs[0].type] : 'לחיצה על חוליית מפגינים — כל הנבחרים מטפלים בה. לחיצה על המדרכה — מציבים שם.';
       } else {
         this.selExplainDefault = sqs.length === 1 ? TX().UNITS[sqs[0].type].explain : 'לחיצה על הכביש שולחת את כל החוליות הנבחרות — הן נפרסות זו לצד זו.';

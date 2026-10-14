@@ -45,7 +45,7 @@
     think() {
       const w = this.w, cfg = this.cfg, t = w.t, Un = HM.Units;
       const th = this.threats();
-      const patrols = this.mine('patrol');
+      const patrols = this.mine('patrol').concat(this.mine('riot'));
       const nPatrol = w.unitCount('police', 'patrol');
       // ---- קניות ----
       // חוסכים לכלי הכבד כשהגיע זמנו (אחרת כל הכסף הולך על עוד שוטרים)
@@ -60,6 +60,15 @@
       if (t >= cfg.patrolAt && th.length && nPatrol < Math.min(cfg.maxPatrols, th.length + 1) &&
           (nPatrol < 2 || w.money.police - P.patrol.cost >= reserve)) {
         w.cmd('police', { type: 'buy', unit: 'patrol' });
+      }
+      // יס"מ כשההפגנה גדולה; קצין קישור כשיש עסקן
+      if (t >= cfg.horsesAt && th.length >= 3 && w.money.police - P.riot.cost >= reserve + 150) w.cmd('police', { type: 'buy', unit: 'riot' });
+      if (t >= cfg.patrolAt + 40 && w.squads.some(s => s.type === 'askan' && s.members.length) && w.money.police - P.officer.cost >= reserve) w.cmd('police', { type: 'buy', unit: 'officer' });
+      for (const o of this.mine('officer')) {
+        if (o.target && w.squadById(o.target)) continue;
+        const ask = w.squads.find(s => s.type === 'askan' && s.members.length && !s.broken);
+        const tg = ask || (th[0] && th[0].sq);
+        if (tg) w.cmd('police', { type: 'target', squads: [o.id], target: tg.id });
       }
 
       // ---- שוטרים ----

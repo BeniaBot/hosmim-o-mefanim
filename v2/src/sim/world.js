@@ -29,6 +29,8 @@
       this.money = { protest: M.protest.start, police: M.police.start };
       this.income = { protest: 0, police: 0 };
       this.shofarCD = 0;
+      this.busCD = 0;
+      this.busProps = [];
       this.megaCD = 0;
       this.outcome = null;
       this.emptyT = 0;
@@ -164,6 +166,17 @@
       }
     }
 
+    // האם הנקודה בטווח המצלמה של צלם
+    photoAt(x, z) {
+      const R = this.BAL.protest.photographer.range;
+      for (const sq of this.squads) {
+        if (sq.type !== 'photographer' || sq.broken || !sq.members.length) continue;
+        const a = sq.members[0];
+        if (a.state === 'free' && U.dist2(a.x, a.z, x, z) < R * R) return true;
+      }
+      return false;
+    }
+
     // האם הנקודה בטווח ההשפעה של עסקן
     auraAt(x, z) {
       const R = this.BAL.protest.aura.range;
@@ -225,6 +238,21 @@
           }
           return { ok: n > 0 };
         }
+        case 'bus': {
+          // הסעה מאורגנת: שתי חוליות בחורים מגיעות למקום שבחרתם
+          if (side !== 'protest') return { ok: false };
+          const Bs = this.BAL.protest.bus;
+          if (this.busCD > 0 || this.t < Bs.firstAt) return { ok: false, reason: 'cooldown' };
+          if (this.money.protest < Bs.cost) return { ok: false, reason: 'money' };
+          if (!this.map.inBounds(c.x, c.z, 6) || this.map.isRoad(c.x, c.z) || !this.nav.foot.isWalkable(c.x, c.z)) return { ok: false, reason: 'place' };
+          const pb = this.map.bases.police;
+          if (U.dist(c.x, c.z, pb.x, pb.z) < Bs.minFromPolice) return { ok: false, reason: 'place' };
+          this.money.protest -= Bs.cost;
+          this.busCD = Bs.cooldown;
+          this.pending.push({ side: 'protest', bus: true, at: this.t + Bs.delay, x: c.x, z: c.z, types: Bs.squads.slice() });
+          this.events.push('busIncoming', { x: c.x, z: c.z, eta: Bs.delay });
+          return { ok: true, eta: Bs.delay };
+        }
         case 'megaphone': {
           if (side !== 'police') return { ok: false };
           const Mg = this.BAL.police.megaphone;
@@ -249,7 +277,11 @@
           for (const id of c.squads || []) {
             const s = this.squadById(id);
             if (!s || s.side !== side || side !== 'police') continue;
-            if (s.type === 'patrol') {
+            if (s.type === 'officer') {
+              s.target = tgt.id; s.mode = 'talk';
+              const tc = U2.centroid(tgt); U2.setGoal(this, s, tc.x + 2.5, tc.z + 2.5, null);
+              n++;
+            } else if (U2.DRAGGERS[s.type]) {
               s.target = tgt.id; s.mode = 'arrest'; s.auto = false;
               for (const cop of s.members) if (cop.state === 'seek') { U2.dropVictim(cop); cop.state = 'free'; }
               const tc = U2.centroid(tgt); U2.setGoal(this, s, tc.x, tc.z, null);
@@ -305,7 +337,7 @@
 
     unitCount(side, type) {
       let n = this.squads.filter(s => s.side === side && s.type === type && !s.broken && (s.members.length || s.vehicle)).length;
-      n += this.pending.filter(p => p.side === side && p.type === type).length;
+      n += this.pending.filter(p => p.side === side && p.type === type && !p.bus).length;
       return n;
     }
 
@@ -341,6 +373,16 @@
         const p = this.pending[i];
         if (this.t < p.at) continue;
         this.pending.splice(i, 1);
+        if (p.bus) {
+          // ההסעה הגיעה: האוטובוס עוצר בשוליים והחוליות יורדות
+          p.types.forEach((t, k) => {
+            const sq = HM.Units.makeSquad(this, 'protest', t, p.x + k * 2.5, p.z + k * 1.5);
+            HM.Units.setGoal(this, sq, p.x + (k - 0.5) * 5, p.z, null);
+          });
+          this.busProps.push({ x: p.x, z: p.z, until: this.t + 7 });
+          this.events.push('busArrived', { x: p.x, z: p.z });
+          continue;
+        }
         const b = this.map.bases.police;
         const sq = HM.Units.makeSquad(this, 'police', p.type, b.x, b.z);
         const k = this.squads.filter(s => s.side === 'police').length;
@@ -361,6 +403,8 @@
       this.t += dt;
       const U2 = HM.Units;
       this.shofarCD = Math.max(0, this.shofarCD - dt);
+      this.busCD = Math.max(0, this.busCD - dt);
+      if (this.busProps.length) this.busProps = this.busProps.filter(b => b.until > this.t);
       this.megaCD = Math.max(0, this.megaCD - dt);
       // כסף
       const M = this.BAL.money;
@@ -377,10 +421,23 @@
 
       for (const sq of this.squads) {
         if (sq.side === 'police') {
-          if (sq.type === 'patrol') U2.updatePatrolSquad(this, sq);
+          if (U2.DRAGGERS[sq.type]) U2.updatePatrolSquad(this, sq);
+          else if (sq.type === 'officer') U2.updateOfficerSquad(this, sq);
           else if (sq.type === 'horses') U2.updateHorseSquad(this, sq, dt);
         }
         U2.updateSquad(this, sq, dt);
+      }
+      // קצין קישור — מדבר עם המפגינים שלידו, המורל שלהם יורד
+      const OF = this.BAL.police.officer;
+      for (const sq of this.squads) {
+        if (sq.type !== 'officer' || !sq.members.length) continue;
+        const o = sq.members[0];
+        if (o.state !== 'free') continue;
+        for (const ps of this.squads) {
+          if (ps.side !== 'protest' || ps.broken || !ps.members.length) continue;
+          const c = U2.centroid(ps);
+          if (U.dist2(c.x, c.z, o.x, o.z) < OF.range * OF.range) U2.hitMorale(this, ps, OF.moraleDrain * dt, o.x, o.z);
+        }
       }
       // עסקן — מורל לסובבים
       const A = this.BAL.protest.aura;

@@ -272,3 +272,104 @@ test('police can win by dispersal when the protest runs out of people', () => {
   run(w, HM.BAL.end.emptyStreetT + 2);
   assert.ok(w.outcome && w.outcome.winner === 'police' && w.outcome.reason === 'dispersed', JSON.stringify(w.outcome));
 });
+
+// ---------------- יחידות נוספות ומפות ----------------
+test('photographer slows dragging and documented drags make headlines', () => {
+  const w = newWorld();
+  const prot = placeSquad(w, 'protest', 'bochurim', 10, 3, false);
+  const ph = placeSquad(w, 'protest', 'photographer', 12, 9, false);
+  void ph;
+  const pol = U.makeSquad(w, 'police', 'patrol', 14, -9);
+  U.setGoal(w, pol, 14, -9);
+  run(w, 2);
+  assert.ok(w.photoAt(10, 3));
+  w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
+  let docs = 0;
+  const end = w.t + 40;
+  while (w.t < end) { w.step(); for (const e of w.events.drain()) if (e.type === 'headline' && e.reason === 'documented') docs++; }
+  assert.ok(docs >= 1, 'documented drags: ' + docs);
+});
+
+test('officer next to the askan blocks "I have a permit"', () => {
+  const w = newWorld();
+  const a = placeSquad(w, 'protest', 'askan', 0, 0, false);
+  const pol = U.makeSquad(w, 'police', 'patrol', 4, 4);
+  U.setGoal(w, pol, 4, 4);
+  const off = U.makeSquad(w, 'police', 'officer', 3, -3);
+  U.setGoal(w, off, 3, -3);
+  run(w, 1);
+  const r = w.cmd('protest', { type: 'permit', squad: a.id });
+  assert.ok(!r.ok && r.reason === 'officer');
+});
+
+test('officer following a squad drains its morale', () => {
+  const w = newWorld();
+  const sq = placeSquad(w, 'protest', 'avrechim', -20, 0, true);
+  run(w, 3);
+  const off = U.makeSquad(w, 'police', 'officer', -20, -9);
+  U.setGoal(w, off, -20, -9);
+  w.cmd('police', { type: 'target', squads: [off.id], target: sq.id });
+  const m0 = sq.morale;
+  run(w, 20);
+  assert.ok(sq.morale < m0 - 5, m0 + ' -> ' + sq.morale);
+});
+
+test('riot squad drags faster than a patrol', () => {
+  function timeToFirstDrag(type) {
+    const w = newWorld();
+    const prot = placeSquad(w, 'protest', 'avrechim', 10, 3, true);
+    run(w, 4);
+    const pol = U.makeSquad(w, 'police', type, 12, -8);
+    U.setGoal(w, pol, 12, -8);
+    w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
+    const t0 = w.t;
+    while (w.stats.dragged === 0 && w.t - t0 < 60) { w.step(); w.events.drain(); }
+    return w.t - t0;
+  }
+  assert.ok(timeToFirstDrag('riot') < timeToFirstDrag('patrol'));
+});
+
+test('bus brings two squads to a chosen sidewalk spot', () => {
+  const w = newWorld();
+  placeSquad(w, 'protest', 'bochurim', -60, -10, false);   // שלא ייחשב "התפזרה"
+  w.money.protest = 1000;
+  run(w, HM.BAL.protest.bus.firstAt + 0.5);
+  assert.strictEqual(w.cmd('protest', { type: 'bus', x: -40, z: 0 }).reason, 'place', 'not on the road');
+  const r = w.cmd('protest', { type: 'bus', x: -40, z: 9.5 });
+  assert.ok(r.ok, JSON.stringify(r));
+  const n0 = w.squads.filter(s => s.side === 'protest').length;
+  run(w, HM.BAL.protest.bus.delay + 0.5);
+  assert.strictEqual(w.squads.filter(s => s.side === 'protest').length, n0 + 2);
+  assert.ok(!w.cmd('protest', { type: 'bus', x: -40, z: 9.5 }).ok, 'cooldown');
+});
+
+test('all three maps build and run a full AI game', () => {
+  for (const id of ['barilan', 'kvish4', 'gesher']) {
+    const w = new HM.World({ seed: 21, map: id, protest: 'ai', police: 'ai', protestDifficulty: 'bot' });
+    run(w, 900);
+    assert.ok(w.outcome, id + ' ended');
+    for (const p of w.people) assert.ok(!w.map.inBuilding(p.x, p.z, -0.3), id + ': person inside a wall/building');
+  }
+});
+
+test('route 4: walls leave gaps and the pedestrian light stops traffic', () => {
+  const m = HM.buildMap('kvish4', HM.BAL);
+  const nav = HM.buildNav(m);
+  assert.ok(!nav.foot.isWalkable(-40, 15.9), 'wall blocks');
+  assert.ok(nav.foot.isWalkable(-77, 15.9), 'gap is open');
+  const w = new HM.World({ seed: 2, map: 'kvish4', protest: 'human', police: 'human', empty: true });
+  let red = false;
+  run(w, 45, () => { if (w.traffic.light.x === 'R') red = true; });
+  assert.ok(red, 'pedestrian phase happens');
+});
+
+test('chords bridge: a blocked tram boosts the headline meter', () => {
+  const w = new HM.World({ seed: 4, map: 'gesher', protest: 'human', police: 'human', empty: true });
+  // שורה לרוחב כל הכביש כולל המסילה
+  const a = U.makeSquad(w, 'protest', 'bochurim', -30, -3); U.setGoal(w, a, -30, -3, 'z'); a.stance = 'sit';
+  const b = U.makeSquad(w, 'protest', 'bochurim', -30, 3); U.setGoal(w, b, -30, 3, 'z'); b.stance = 'sit';
+  let blocked = false;
+  run(w, 150, () => { if (w.traffic.tramBlocked) blocked = true; });
+  assert.ok(blocked, 'a tram got stuck');
+  assert.ok((w.stats.tramT || 0) > 5);
+});

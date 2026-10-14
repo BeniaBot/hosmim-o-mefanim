@@ -4,6 +4,7 @@ const path = require('path');
 let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node22/lib/node_modules/playwright'); }
 const OUT = process.argv[2] || '.';
 const URL = 'file://' + path.resolve(__dirname, '..', 'index.html') + '?seed=4242';
+const URL_UNLOCK = URL + '&unlock=1';
 const results = [];
 function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console.log((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : '')); }
 
@@ -107,9 +108,22 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   // ---- שופר ----
   await ff(45);
   const cd0 = await ev(() => HM.Game.world.shofarCD);
-  await p.click('#buyCards .card:nth-child(4)');
+  await p.click('#buyCards .card:nth-child(6)');
   const cd1 = await ev(() => HM.Game.world.shofarCD);
   check('shofar card triggers shofar', cd0 === 0 && cd1 > 0, { cd0, cd1 });
+
+  // ---- צלם והסעה ----
+  await ev(() => { HM.Game.world.money.protest = 2000; });
+  await p.keyboard.press('KeyB');
+  check('B buys a photographer', await ev(() => HM.Game.world.squads.some(s => s.type === 'photographer')));
+  await p.keyboard.press('KeyN');
+  check('N enters bus aim mode', await ev(() => HM.Game.input.aim === 'bus'));
+  const side = await ev(() => { const s = HM.Game.hud.project(-40, 0, 12.5); return s; });
+  await p.mouse.click(side.x, side.y);
+  check('click on sidewalk orders the bus', await ev(() => HM.Game.world.pending.some(q => q.bus)));
+  await ff(10);
+  check('bus drops 2 squads', await ev(() => HM.Game.world.busProps.length === 1 && HM.Game.world.squads.filter(s => s.side === 'protest').length >= 8));
+  await p.screenshot({ path: OUT + '/ui-bus.png' });
 
   // ---- כפתורי בקרה ----
   await p.click('#btnSpeed');
@@ -148,13 +162,20 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.waitForTimeout(500);
   check('end "to menu" button works', await visible('menu'));
 
+  // ---- התקדמות: מפות נעולות עד ניצחון ----
+  check('Route 4 locked before any win', await ev(() => { localStorage.removeItem('hm2-prog'); HM.Game.updateMapButtons(); return document.querySelector('#mapSeg [data-map="kvish4"]').disabled; }));
+  await ev(() => { localStorage.setItem('hm2-prog', JSON.stringify({ protest: { barilan: { easy: 2 } } })); HM.Game.updateMapButtons(); });
+  check('Route 4 unlocks after a Bar Ilan win', await ev(() => !document.querySelector('#mapSeg [data-map="kvish4"]').disabled && document.querySelector('#mapSeg [data-map="gesher"]').disabled));
+  check('stars shown on map button', (await ev(() => { HM.Game.diff = 'easy'; HM.Game.updateMapButtons(); return document.querySelector('#mapSeg [data-map="barilan"] span').textContent; })).includes('★★'));
+  await ev(() => { HM.Game.diff = 'normal'; HM.Game.updateMapButtons(); });
+
   // ================= צד המשטרה =================
   await p.click('#sideSeg .segBtn[data-side="police"]');
   check('police side selectable', (await p.textContent('#startSum')).includes('משטרה'));
   await p.click('#btnStart');
   await p.waitForTimeout(800);
   check('police game starts with 2 patrols', (await ev(() => HM.Game.world.squads.filter(s => s.side === 'police').length)) === 2);
-  check('police cards shown (4)', (await ev(() => document.querySelectorAll('#buyCards .card').length)) === 4);
+  check('police cards shown (6)', (await ev(() => document.querySelectorAll('#buyCards .card').length)) === 6);
   check('money label is police budget', (await p.textContent('#moneyLbl')).includes('תקציב'));
   await ff(25);
   await p.waitForTimeout(300);
@@ -173,15 +194,17 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   check('click on protesters sets police target', tg === enemy.id, { tg, want: enemy.id });
   await ff(8);
   check('cops go to work (seek/grab/drag)', await ev(() => HM.Game.world.people.some(c => c.kind === 'cop' && (c.state === 'seek' || c.state === 'grab' || c.state === 'drag'))), await ev(() => HM.Game.world.people.filter(c => c.kind === 'cop').map(c => c.state + (c.squad.target ? '*' : '')).join()));
-  await ev(() => { HM.Game.world.money.police = 2000; });
+  await ev(() => { HM.Game.world.money.police = 3000; });
   await p.keyboard.press('KeyX');
   await p.keyboard.press('KeyC');
-  check('hotkeys order horses + cannon (pending)', (await ev(() => HM.Game.world.pending.length)) === 2);
+  await p.keyboard.press('KeyB');
+  await p.keyboard.press('KeyN');
+  check('hotkeys order horses + cannon + riot + officer (pending)', (await ev(() => HM.Game.world.pending.length)) === 4);
   await ff(9);
-  check('horses and cannon arrive', await ev(() => { const w = HM.Game.world; return w.squads.some(s => s.type === 'horses') && w.squads.some(s => s.type === 'cannon'); }));
+  check('horses, cannon, riot and officer arrive', await ev(() => { const w = HM.Game.world; return ['horses', 'cannon', 'riot', 'officer'].every(t => w.squads.some(s => s.type === t)); }));
   // כריזה
-  await p.click('#buyCards .card:nth-child(4)');
-  check('megaphone card enters aim mode', await ev(() => HM.Game.input.aimMega === true));
+  await p.click('#buyCards .card:nth-child(6)');
+  check('megaphone card enters aim mode', await ev(() => HM.Game.input.aim === 'megaphone'));
   const spot = await ev(() => HM.Game.hud.project(0, 0, 0));
   await p.mouse.click(spot.x, spot.y);
   check('click places megaphone (cooldown starts)', (await ev(() => HM.Game.world.megaCD)) > 0);
@@ -192,9 +215,9 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   // לרדת למדרכה
   await ev(() => { const w = HM.Game.world; const s = w.squads.find(q => q.type === 'patrol'); HM.Game.input.selected.clear(); HM.Game.input.selected.add(s.id); w.cmd('police', { type: 'move', squads: [s.id], x: 0, z: 0 }); });
   await ff(10);
-  await p.keyboard.press('KeyB');
+  await p.keyboard.press('KeyG');
   const g = await ev(() => { const w = HM.Game.world; const s = w.squadById([...HM.Game.input.selected][0]); return { onRoad: w.map.isRoad(s.goal.x, s.goal.z) }; });
-  check('B sends squad to the sidewalk', !g.onRoad, g);
+  check('G sends squad to the sidewalk', !g.onRoad, g);
   await p.screenshot({ path: OUT + '/ui-police.png' });
   // הפסד משטרה במד 100
   await ev(() => HM.Game.world.addHeadline(100, 'test', 0, 0));

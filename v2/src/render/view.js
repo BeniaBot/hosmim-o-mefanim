@@ -563,7 +563,10 @@
         bochur: inst(M.bochur(), pm, 220, { shadow: false }),
         avrech: inst(M.avrech(), pm, 160),
         askan: inst(M.askan(), pm, 8),
+        photographer: inst(M.photographer(), pm, 4),
         cop: inst(M.cop(), pm, 90),
+        riot: inst(M.riot(), pm, 24),
+        officer: inst(M.officer(), pm, 4),
         rider: inst(M.rider(), pm, 8)
       };
       for (const k in this.people) R.add(this.people[k]);
@@ -669,7 +672,7 @@
       this.markerR = 1;
     }
     // עיגול כיוון (כריזה)
-    setAim(p, r) {
+    setAim(p, r, color) {
       if (!this.aim) {
         const g = new T.RingGeometry(0.97, 1.0, 64); g.rotateX(-Math.PI / 2);
         this.aim = new T.Mesh(g, this.mat(new T.MeshBasicMaterial({ color: 0x6ea2ff, transparent: true, opacity: 0.9, depthWrite: false })));
@@ -681,13 +684,15 @@
       const on = !!p;
       this.aim.visible = this.aimFill.visible = on;
       if (!on) return;
+      this.aim.material.color.setHex(color || 0x6ea2ff);
+      this.aimFill.material.color.setHex(color || 0x6ea2ff);
       for (const m of [this.aim, this.aimFill]) { m.position.set(p.x, 0.2, p.z); m.scale.set(r, 1, r); }
     }
 
     // ---------- עדכון לפריים ----------
     update(alpha, dtReal, ui) {
       const w = this.world;
-      const counts = { bochur: 0, avrech: 0, askan: 0, cop: 0, rider: 0 };
+      const counts = { bochur: 0, avrech: 0, askan: 0, photographer: 0, cop: 0, riot: 0, officer: 0, rider: 0 };
       let li = 0, bi = 0, hi = 0, ri = 0, ti = 0;
       const sel = ui && ui.selected ? ui.selected : null;
       const tgtSet = ui && ui.targetSet ? ui.targetSet : null;
@@ -742,14 +747,14 @@
         if (p.scare > 0) { bodyY += Math.sin(p.scare * 12) * 0.06; pitch = -0.25; }
         setM(mesh, i, x, bodyY, z, p.face, pitch, roll, S);
         // רגליים
-        const lc = p.side === 'police' ? 0x1b273d : (p.kind === 'askan' ? 0x2a2c31 : 0x15151a);
+        const lc = p.kind === 'riot' ? 0x1e2631 : p.side === 'police' ? 0x1b273d : (p.kind === 'askan' ? 0x2a2c31 : 0x15151a);
         const lx = Math.cos(p.face) * 0.11 * S, lz = -Math.sin(p.face) * 0.11 * S;
         const hipY = bodyY + (p.state === 'carried' ? 0 : 0);
         setM(legs, li, x + lx, hipY, z + lz, p.face, legSwing + legPitch, p.sit > 0.5 ? 0.12 : 0, S); legs.setColorAt(li++, _c.setHex(lc));
         setM(legs, li, x - lx, hipY, z - lz, p.face, -legSwing + legPitch, p.sit > 0.5 ? -0.12 : 0, S); legs.setColorAt(li++, _c.setHex(lc));
         setM(blobs, bi++, x, gy + 0.02, z, 0, 0, 0, p.sit > 0.5 ? 1.5 : 1.05);
         // שלט ביד
-        if (p.side === 'protest' && p.kind !== 'askan' && p.slotI % 3 === 0 && (p.state === 'free' || p.state === 'returning') && !(p.squad.fleeT > 0)) {
+        if (p.side === 'protest' && p.kind !== 'askan' && p.kind !== 'photographer' && p.slotI % 3 === 0 && (p.state === 'free' || p.state === 'returning') && !(p.squad.fleeT > 0)) {
           const si = (p.squad.num + p.slotI) % this.signs.length;
           const sm = this.signs[si];
           if (sc[si] < 80) {
@@ -812,6 +817,19 @@
           putCar(type, x, z, Math.atan2(L.dx, L.dz), type === 'taxi' ? 0xf2c230 : type === 'bus' ? 0xf4f2ec : CAR_COLORS[(k * 5 + L.id) % 8], true);
           d -= len + 2.4;
         }
+      }
+      // אוטובוס ההסעה שהוריד מפגינים
+      for (const bp of w.busProps || []) {
+        let best = null, bd = 1e9;
+        for (const r of w.map.roads) {
+          const d = r.axis === 'x' ? Math.abs(bp.z - r.c) : Math.abs(bp.x - r.c);
+          if (d < bd) { bd = d; best = r; }
+        }
+        if (!best) continue;
+        const side = best.axis === 'x' ? Math.sign(bp.z - best.c) || 1 : Math.sign(bp.x - best.c) || 1;
+        const off = best.c + side * (best.halfW - 1.6);
+        if (best.axis === 'x') putCar('bus', bp.x, off, side > 0 ? Math.PI / 2 : -Math.PI / 2, 0xffd96b, false);
+        else putCar('bus', off, bp.z, side > 0 ? Math.PI : 0, 0xffd96b, false);
       }
       for (const t in this.cars) {
         const m = this.cars[t];

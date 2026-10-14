@@ -121,6 +121,50 @@
     p.push(part(box(0.32, 0.24, 0.08), 0x5a3a22, 0.36, -0.12, 0.02));
     return merge(p);
   }
+  function photographer() {
+    const p = [];
+    p.push(part(cyl(0.24, 0.29, 1.02, 12), 0x26272b, 0, 0.12, 0));   // מעיל
+    p.push(part(box(0.14, 0.3, 0.04), WHITE, 0, 0.47, 0.22));
+    p.push(part(box(0.5, 0.1, 0.3), 0x26272b, 0, 0.58, 0));
+    // שתי ידיים מחזיקות מצלמה מול הפנים
+    p.push(part(box(0.12, 0.44, 0.14), 0x26272b, 0.22, 0.52, 0.12, -1.0, 0, 0.3));
+    p.push(part(box(0.12, 0.44, 0.14), 0x26272b, -0.22, 0.52, 0.12, -1.0, 0, -0.3));
+    p.push(part(box(0.3, 0.2, 0.16), 0x151515, 0, 0.8, 0.2));                  // מצלמה
+    p.push(part(cyl(0.07, 0.08, 0.2, 10), 0x2c2c2c, 0, 0.8, 0.36, Math.PI / 2, 0, 0));  // עדשה
+    p.push(part(box(0.04, 0.04, 0.02), 0xe23c3c, 0.1, 0.89, 0.28));            // נורה
+    p.push(part(box(0.06, 0.6, 0.02), 0x8a1f1f, 0.14, 0.35, 0.2, 0, 0, 0.4));  // רצועה
+    head(p, true, false);
+    haredHat(p, false);
+    return merge(p);
+  }
+  function riot() {
+    const p = [];
+    p.push(part(box(0.5, 0.64, 0.3), 0x2b3542, 0, 0.32, 0));             // מדים כהים
+    p.push(part(box(0.54, 0.44, 0.34), 0x161c25, 0, 0.38, 0));           // שריון
+    p.push(part(box(0.5, 0.13, 0.3), 0x10151c, 0, 0.05, 0));
+    arms(p, 0x2b3542);
+    p.push(part(cyl(0.06, 0.07, 0.1, 8), SKIN, 0, 0.66, 0));
+    p.push(part(sph(0.135, 12, 10), SKIN, 0, 0.8, 0, 0, 0, 0, 1, 1.08, 1));
+    p.push(part(sph(0.17, 12, 8), 0x1a2230, 0, 0.86, -0.01, 0, 0, 0, 1.05, 0.92, 1.1)); // קסדה
+    p.push(part(box(0.3, 0.14, 0.03), 0x9fb6cc, 0, 0.8, 0.17));          // מגן פנים
+    // מגן שקוף
+    p.push(part(box(0.62, 0.95, 0.04), 0xb7c9db, 0.05, 0.25, 0.32));
+    return merge(p);
+  }
+  function officer() {
+    const p = [];
+    p.push(part(box(0.46, 0.62, 0.27), 0xf1f2f4, 0, 0.32, 0));       // חולצה לבנה
+    p.push(part(box(0.06, 0.34, 0.02), 0x1f2d44, 0, 0.42, 0.145));   // עניבה
+    p.push(part(box(0.47, 0.13, 0.28), 0x172238, 0, 0.05, 0));
+    p.push(part(box(0.14, 0.05, 0.02), 0xe2b93b, -0.13, 0.55, 0.14)); // דרגות
+    arms(p, 0xf1f2f4);
+    p.push(part(cyl(0.06, 0.07, 0.1, 8), SKIN, 0, 0.66, 0));
+    p.push(part(sph(0.135, 12, 10), SKIN, 0, 0.8, 0, 0, 0, 0, 1, 1.08, 1));
+    p.push(part(cyl(0.16, 0.14, 0.12, 12), 0x172238, 0, 0.93, 0));
+    p.push(part(box(0.24, 0.025, 0.14), 0x101826, 0, 0.885, 0.12));
+    p.push(part(box(0.2, 0.03, 0.02), 0xe2b93b, 0, 0.91, 0.17));     // סרט זהב
+    return merge(p);
+  }
   function cop() {
     const p = [];
     p.push(part(box(0.46, 0.62, 0.27), 0x86a9cf, 0, 0.32, 0));       // חולצה תכלת
@@ -365,7 +409,7 @@
 
   HM.Models = {
     lin, part, merge, box, cyl, sph, tram,
-    bochur, avrech, askan, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
+    bochur, avrech, askan, photographer, riot, officer, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier
   };
 })(typeof window !== 'undefined' ? window : globalThis);

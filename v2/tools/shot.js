@@ -4,7 +4,7 @@ const path = require('path');
 let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node22/lib/node_modules/playwright'); }
 const OUT = process.argv[2] || '.';
 const scenario = process.argv[3] || 'basic';
-const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const URL = 'file://' + path.resolve(__dirname, '..', 'index.html') + '?unlock=1';
 (async () => {
   const b = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 1366, height: 768 } });

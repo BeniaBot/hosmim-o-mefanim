@@ -114,19 +114,32 @@
         if (d.moved) this.boxSelect(d.x0, d.y0, e.clientX, e.clientY, d.shift);
         else this.click(e.clientX, e.clientY, d.shift);
       } else if (d.kind === 'pan' && !d.moved) {
-        if (this.aimMega) { this.aimMega = false; return; }
+        if (this.aim) { this.aim = null; return; }
         this.command(e.clientX, e.clientY);
       }
     }
 
-    click(sx, sy, additive) {
-      if (this.aimMega) {
-        const gp = this.groundAt(sx, sy);
-        this.aimMega = false;
-        if (gp) {
-          const r = this.w.cmd('police', { type: 'megaphone', x: gp.x, z: gp.z });
-          if (r.ok) this.g.view.showMarker(gp.x, gp.z, 0x6ea2ff, this.w.BAL.police.megaphone.range);
+    // ביצוע כלי שמכוונים למקום (כריזה / הסעה)
+    fireAim(x, z) {
+      const kind = this.aim;
+      this.aim = null;
+      if (kind === 'megaphone') {
+        const r = this.w.cmd('police', { type: 'megaphone', x, z });
+        if (r.ok) this.g.view.showMarker(x, z, 0x6ea2ff, this.w.BAL.police.megaphone.range);
+      } else if (kind === 'bus') {
+        const r = this.w.cmd('protest', { type: 'bus', x, z });
+        if (r.ok) { this.g.view.showMarker(x, z, 0xffd96b); HM.Audio.chime(true); }
+        else {
+          const msg = r.reason === 'place' ? 'ההסעה צריכה לעצור על מדרכה, לא על הכביש ולא ליד תחנת המשטרה' : r.reason === 'money' ? 'אין מספיק כסף להסעה' : 'ההסעה עוד לא מוכנה';
+          this.g.hud.alert(msg, 'info', 'bus', 'busfail');
+          if (r.reason === 'place') this.aim = 'bus';   // נותנים לנסות שוב
         }
+      }
+    }
+    click(sx, sy, additive) {
+      if (this.aim) {
+        const gp = this.groundAt(sx, sy);
+        if (gp) this.fireAim(gp.x, gp.z); else this.aim = null;
         return;
       }
       const own = this.pickSquad(sx, sy, this.side);
@@ -141,11 +154,9 @@
       HM.Audio.init();
       const sq = this.w.squadById(id);
       if (!sq) return;
-      if (this.aimMega) {
+      if (this.aim) {
         const c = HM.Units.centroid(sq);
-        this.aimMega = false;
-        const r = this.w.cmd('police', { type: 'megaphone', x: c.x, z: c.z });
-        if (r.ok) this.g.view.showMarker(c.x, c.z, 0x6ea2ff, this.w.BAL.police.megaphone.range);
+        this.fireAim(c.x, c.z);
         return;
       }
       if (sq.side === this.side) {
@@ -295,7 +306,7 @@
       if (g.mode === 'menu' || g.mode === 'end') return;
       if (e.code === 'Space' || e.code === 'KeyP' || e.code === 'Escape') {
         e.preventDefault();
-        if (e.code === 'Escape' && this.aimMega && g.mode === 'play') { this.aimMega = false; return; }
+        if (e.code === 'Escape' && this.aim && g.mode === 'play') { this.aim = null; return; }
         if (e.code === 'Escape' && this.selected.size && g.mode === 'play') { this.selected.clear(); g.hud.updateSelection(true); return; }
         g.togglePause();
         return;
@@ -320,9 +331,11 @@
         if (e.code === 'KeyZ') { g.useCard('patrol'); return; }
         if (e.code === 'KeyX') { g.useCard('horses'); return; }
         if (e.code === 'KeyC') { g.useCard('cannon'); return; }
+        if (e.code === 'KeyB') { g.useCard('riot'); return; }
+        if (e.code === 'KeyN') { g.useCard('officer'); return; }
         if (e.code === 'KeyV') { g.useCard('megaphone'); return; }
         if (e.code === 'KeyR') { this.refill(); return; }
-        if (e.code === 'KeyB') { this.toSidewalk(); return; }
+        if (e.code === 'KeyG') { this.toSidewalk(); return; }
       }
       if (this.side === 'protest') {
         if (e.code === 'KeyS' && this.selected.size) { this.toggleStance(); return; }
@@ -331,6 +344,8 @@
         if (e.code === 'KeyX') { g.useCard('avrechim'); return; }
         if (e.code === 'KeyC') { g.useCard('askan'); return; }
         if (e.code === 'KeyV') { g.useCard('shofar'); return; }
+        if (e.code === 'KeyB') { g.useCard('photographer'); return; }
+        if (e.code === 'KeyN') { g.useCard('bus'); return; }
       }
       if (e.code === 'Equal' || e.code === 'NumpadAdd') this.zoom(1 / 1.15);
       if (e.code === 'Minus' || e.code === 'NumpadSubtract') this.zoom(1.15);
@@ -418,11 +433,17 @@
       const g = this.g, view = g.view;
       if (!view) return;
       const hintEl = $('hint');
-      if (this.aimMega && g.mode === 'play') {
+      if (this.aim && g.mode === 'play') {
         const gp = this.mouse.inside ? this.groundAt(this.mouse.x, this.mouse.y) : null;
         view.setPreview(null, null);
-        view.setAim(gp, this.w.BAL.police.megaphone.range);
-        hintEl.textContent = 'כריזה: לחצו על המקום (כל מי שבתוך העיגול יושפע) · Esc לביטול';
+        if (this.aim === 'megaphone') {
+          view.setAim(gp, this.w.BAL.police.megaphone.range);
+          hintEl.textContent = 'כריזה: לחצו על המקום (כל מי שבתוך העיגול יושפע) · Esc לביטול';
+        } else {
+          view.setAim(gp, 3, 0xffd96b);
+          const ok = gp && !this.w.map.isRoad(gp.x, gp.z) && this.w.nav.foot.isWalkable(gp.x, gp.z);
+          hintEl.textContent = ok ? 'הסעה: לחצו כאן — שתי חוליות ירדו מהאוטובוס בעוד 9 שניות · Esc לביטול' : 'הסעה: בחרו מקום על המדרכה (לא על הכביש) · Esc לביטול';
+        }
         return;
       }
       view.setAim(null);
@@ -484,7 +505,8 @@
       const sitting = HM.Units.squadSitting(enemy);
       const types = new Set(sqs.map(s => s.type));
       const parts = [];
-      if (types.has('patrol')) parts.push(sitting ? 'השוטרים יגררו אותם (יושבים — לאט)' : 'השוטרים יגררו אותם לניידת');
+      if (types.has('patrol') || types.has('riot')) parts.push(sitting ? 'השוטרים יגררו אותם (יושבים — לאט)' : 'השוטרים יגררו אותם לניידת');
+      if (types.has('officer')) parts.push('הקצין ילך איתם וידבר איתם');
       if (types.has('horses')) parts.push(sitting ? 'זהירות: הם יושבים — הפרשים ייעצרו וזו שערורייה!' : 'הפרשים יפזרו אותם');
       if (types.has('cannon')) parts.push('המכת"זית תתיז עליהם');
       hintEl.textContent = 'לחיצה: ' + parts.join(' · ');

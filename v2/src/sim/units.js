@@ -5,7 +5,8 @@
   const HM = root.HM || (root.HM = {});
   const U = HM.U;
 
-  const KIND = { bochurim: 'bochur', avrechim: 'avrech', askan: 'askan', patrol: 'cop', horses: 'rider' };
+  const KIND = { bochurim: 'bochur', avrechim: 'avrech', askan: 'askan', photographer: 'photographer', patrol: 'cop', riot: 'riot', officer: 'officer', horses: 'rider' };
+  const DRAGGERS = { patrol: 1, riot: 1 };   // חוליות שגוררות מפגינים
   const ON_STREET = { free: 1, held: 1, returning: 1 };   // נחשבים "מפגינים ברחוב"
 
   // ---------- יצירה ----------
@@ -85,7 +86,7 @@
   }
 
   function spacingOf(sq, world) {
-    return sq.type === 'horses' ? 2.4 : sq.type === 'patrol' ? 1.25 : world.BAL.people.lineSpacing;
+    return sq.type === 'horses' ? 2.4 : sq.side === 'police' ? 1.25 : world.BAL.people.lineSpacing;
   }
 
   function formationWidth(world, sq, axis) {
@@ -468,6 +469,8 @@
     const c = world.BAL.protest[v.squad.type];
     let t = isSitting(v) ? c.grab.sit : c.grab.stand;
     if (world.auraAt(v.x, v.z)) t *= world.BAL.protest.aura.grabMul;
+    if (world.photoAt(v.x, v.z)) t *= world.BAL.protest.photographer.dragMul;   // מול מצלמה גוררים בזהירות
+    if (v.holders.some(h => h.squad.type === 'riot')) t *= world.BAL.police.riot.grabMul;
     return t;
   }
 
@@ -492,6 +495,11 @@
           if (sq.type === 'askan') {
             world.addHeadline(world.BAL.headline.askanArrest, 'askanArrest', v.x, v.z);
             world.moraleAround(v.x, v.z, 15, -world.BAL.protest.morale.askanArrested);
+          } else if (sq.type === 'photographer') {
+            world.addHeadline(world.BAL.protest.photographer.arrestH, 'photoArrest', v.x, v.z);
+          } else if (world.photoAt(v.x, v.z)) {
+            // הגרירה תועדה
+            world.addHeadline(world.BAL.protest.photographer.docH, 'documented', v.x, v.z);
           }
           hitMorale(world, sq, world.BAL.protest.morale.dragged, v.x, v.z);
           refreshSlots(world, sq);
@@ -611,6 +619,17 @@
     }
   }
 
+  // ---------- קצין קישור: הולך עם חוליית המטרה ומדבר איתם ----------
+  function updateOfficerSquad(world, sq) {
+    const tgt = sq.target ? world.squadById(sq.target) : null;
+    if (sq.target && (!tgt || tgt.broken || !tgt.members.length)) { sq.target = null; returnToGuard(world, sq); return; }
+    if (!tgt) return;
+    const tc = centroid(tgt);
+    // נעמד קצת מחוץ לשורה, לא בתוכה
+    const gx = tc.x + 2.5, gz = tc.z + 2.5;
+    if (U.dist(sq.goal.x, sq.goal.z, gx, gz) > 4) setGoal(world, sq, gx, gz, null);
+  }
+
   // ---------- פרשים ----------
   function updateHorseSquad(world, sq, dt) {
     const H = world.BAL.police.horses;
@@ -643,7 +662,8 @@
             // סוסים לא דורכים על יושבים — עוצרים. והצילום מגיע לחדשות.
             if (world.t - o.lastScandal > 30) {
               o.lastScandal = world.t;
-              world.addHeadline(world.BAL.headline.horseOnSitters, 'horseScandal', mx, mz);
+              const extra = world.photoAt(mx, mz) ? world.BAL.protest.photographer.forceH : 0;
+              world.addHeadline(world.BAL.headline.horseOnSitters + extra, 'horseScandal', mx, mz);
             }
             const c = centroid(sq);
             const tc2 = centroid(o);
@@ -785,6 +805,8 @@
                 for (const p of o.members) p.wet = 0;
                 fleeSquad(world, o, V.x, V.z, world.BAL.protest.morale.water, 'water');
                 world.stats.soaked++;
+                const oc = centroid(o);
+                if (world.photoAt(oc.x, oc.z)) world.addHeadline(world.BAL.protest.photographer.forceH, 'documented', oc.x, oc.z);
               }
             }
           }
@@ -818,9 +840,16 @@
     if (sq.type !== 'askan' || sq.broken || !sq.members.length || (sq.cd.permit || 0) > 0) return { ok: false, reason: 'cooldown' };
     const a = sq.members[0];
     if (a.state !== 'free') return { ok: false, reason: 'busy' };
+    // קצין קישור ליד העסקן מכיר את התרגיל
+    const O = world.BAL.police.officer;
+    for (const o of world.squads) {
+      if (o.type !== 'officer' || !o.members.length) continue;
+      const m0 = o.members[0];
+      if (U.dist2(m0.x, m0.z, a.x, a.z) < O.range * O.range) { world.events.push('permitBlocked', { x: a.x, z: a.z }); return { ok: false, reason: 'officer' }; }
+    }
     let best = null, bd = P.range * P.range;
     for (const o of world.squads) {
-      if (o.side !== 'police' || o.type !== 'patrol') continue;
+      if (o.side !== 'police' || !DRAGGERS[o.type]) continue;
       for (const c of o.members) {
         if (c.state === 'drag') continue;
         const d = U.dist2(a.x, a.z, c.x, c.z);
@@ -849,7 +878,7 @@
       if (sq.fleeT > 0) sq.fleeT = 0.01;
     }
     for (const c of world.people) {
-      if (c.side !== 'police' || c.kind !== 'cop') continue;
+      if (c.side !== 'police' || (c.kind !== 'cop' && c.kind !== 'riot')) continue;
       if (c.state === 'drag' || c.state === 'carried') continue;
       let near = false;
       for (const q of world.neighbors(c.x, c.z, S.stunRange)) { if (q.side === 'protest' && ON_STREET[q.state]) { near = true; break; } }
@@ -863,6 +892,6 @@
     KIND, ON_STREET, makeSquad, makePerson, centroid, setGoal, refreshSlots, updateSquad, updatePerson,
     updateGrabs, updatePatrolSquad, updateHorseSquad, updateVan, deliverToVan, fleeSquad, hitMorale,
     breakSquad, usePermit, useShofar, squadSitting, isSitting, lineAxisAt, formationWidth, computeSlots,
-    dropVictim, vehicleGo, returnToGuard, centroidOf: centroid
+    dropVictim, vehicleGo, returnToGuard, updateOfficerSquad, DRAGGERS, centroidOf: centroid
   };
 })(typeof window !== 'undefined' ? window : globalThis);
