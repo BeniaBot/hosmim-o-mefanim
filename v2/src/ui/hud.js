@@ -41,6 +41,8 @@
       $('news').innerHTML = '';
       $('alerts').innerHTML = '';
       this.news(TX().fmt(TX().NEWS.start, { place: world.map.name }));
+      const tip = world.map.def.tip && world.map.def.tip[side];
+      if (tip) setTimeout(() => { if (this.w === world) this.alert(tip, 'info', 'flag', 'tip', 8000); }, 1200);
       this.updateSelection(true);
       this.updateText();
     }
@@ -375,7 +377,7 @@
     }
 
     // ---------- התראות ומבזקים ----------
-    alert(text, kind, icon, key) {
+    alert(text, kind, icon, key, ms) {
       if (key) {
         const now = performance.now();
         if (this.lastAlertKey[key] && now - this.lastAlertKey[key] < 4000) return;
@@ -388,7 +390,7 @@
       el.innerHTML = (icon ? HM.ICONS[icon] : '') + '<span></span>';
       el.querySelector('span').textContent = text;
       box.appendChild(el);
-      setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, 3600);
+      setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, ms || 3600);
     }
     news(text) {
       const box = $('news');
