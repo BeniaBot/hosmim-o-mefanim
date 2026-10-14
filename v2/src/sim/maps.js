@@ -72,6 +72,146 @@
     }
   };
 
+  // ---------------- כביש 4 (בני ברק, מסוגנן) ----------------
+  // כביש מהיר רחב בלי צומת: קירות אקוסטיים בצדדים עם כמה פתחים, מעקה בטון באמצע,
+  // ומעבר חציה עם רמזור להולכי רגל — החלון היחיד שבו התנועה עוצרת לבד.
+  const KW = 11.1, KS = 4.5;                 // חצי רוחב הכביש, רוחב מדרכה
+  const kWall = (x0, x1, side) => ({ x0, x1, z0: side < 0 ? -(KW + KS + 0.6) : KW + KS, z1: side < 0 ? -(KW + KS) : KW + KS + 0.6, h: 4.2, style: 'wall' });
+  DEFS.kvish4 = {
+    id: 'kvish4',
+    name: 'כביש 4',
+    city: 'בני ברק',
+    blurb: 'כביש מהיר רחב: שלושה נתיבים לכל כיוון, קירות אקוסטיים ומעבר חציה אחד עם רמזור.',
+    bounds: { x0: -150, x1: 150, z0: -95, z1: 95 },
+    sunset: 480,
+    sidewalk: KS,
+    roads: [
+      { id: 'hwy', axis: 'x', c: 0, lanesPos: 3, lanesNeg: 3, median: 1.2, speed: 19, inflow: 0.24 }
+    ],
+    crossings: [{ road: 'hwy', at: 0, w: 6 }],
+    // רמזור להולכי רגל: רוב הזמן ירוק לרכבים
+    lights: [{ g: 'x', t: 26 }, { g: 'xy', t: 3 }, { g: null, t: 11 }],
+    arms: { W: 'מכיוון רמת גן', E: 'מכיוון פתח תקווה' },
+    walls: [
+      // מעקה בטון באמצע הכביש (פתוח במעבר החציה)
+      { x0: -150, x1: -4, z0: -0.35, z1: 0.35, h: 0.9, style: 'barrier' },
+      { x0: 4, x1: 150, z0: -0.35, z1: 0.35, h: 0.9, style: 'barrier' },
+      // קירות אקוסטיים — צפון (עם פתח ליציאת ניידות המשטרה)
+      kWall(-150, -80, -1), kWall(-74, -10, -1), kWall(10, 14, -1), kWall(24, 70, -1), kWall(76, 150, -1),
+      // קירות אקוסטיים — דרום
+      kWall(-150, -80, 1), kWall(-74, -10, 1), kWall(10, 70, 1), kWall(76, 150, 1)
+    ],
+    buildings: [
+      // דרום (קרוב למצלמה): הישיבה ושכונה נמוכה
+      { x0: -42, x1: -10, z0: 44, z1: 58, h: 10, style: 'yeshiva', sign: 'ישיבת נתיבות הכביש' },
+      { x0: -74, x1: -48, z0: 21, z1: 33, h: 7, style: 'apt' },
+      { x0: -112, x1: -82, z0: 21, z1: 34, h: 8, style: 'apt' },
+      { x0: -150, x1: -118, z0: 21, z1: 33, h: 7, style: 'apt' },
+      { x0: 8, x1: 36, z0: 21, z1: 32, h: 5, style: 'shop', sign: 'מכולת המחלף' },
+      { x0: 42, x1: 68, z0: 21, z1: 33, h: 7, style: 'apt' },
+      { x0: 80, x1: 110, z0: 21, z1: 34, h: 8, style: 'apt' },
+      { x0: 116, x1: 150, z0: 21, z1: 33, h: 7, style: 'apt' },
+      { x0: -74, x1: -46, z0: 40, z1: 70, h: 15, style: 'apt' },
+      { x0: -112, x1: -82, z0: 42, z1: 72, h: 17, style: 'apt' },
+      { x0: 8, x1: 36, z0: 40, z1: 70, h: 16, style: 'apt' },
+      { x0: 44, x1: 72, z0: 42, z1: 72, h: 14, style: 'apt' },
+      { x0: 82, x1: 112, z0: 42, z1: 70, h: 18, style: 'apt' },
+      // צפון (רחוק): תחנת המשטרה ובתים גבוהים
+      { x0: 12, x1: 44, z0: -58, z1: -44, h: 8, style: 'police', sign: 'משטרה — מוצב המחלף' },
+      { x0: -40, x1: -10, z0: -36, z1: -21, h: 18, style: 'apt' },
+      { x0: -78, x1: -46, z0: -36, z1: -21, h: 20, style: 'apt' },
+      { x0: -118, x1: -84, z0: -36, z1: -21, h: 17, style: 'apt' },
+      { x0: 52, x1: 70, z0: -36, z1: -21, h: 19, style: 'apt' },
+      { x0: 80, x1: 112, z0: -36, z1: -21, h: 16, style: 'apt' },
+      { x0: 118, x1: 150, z0: -36, z1: -21, h: 20, style: 'apt' },
+      { x0: -40, x1: -8, z0: -72, z1: -44, h: 21, style: 'apt' },
+      { x0: -80, x1: -48, z0: -74, z1: -44, h: 18, style: 'apt' },
+      { x0: 52, x1: 84, z0: -72, z1: -44, h: 22, style: 'apt' }
+    ],
+    plazas: [
+      { x0: -42, x1: -8, z0: 17, z1: 42, kind: 'yeshiva' },
+      { x0: 10, x1: 46, z0: -42, z1: -17, kind: 'police' }
+    ],
+    vehicleZones: [
+      { x0: 10, x1: 46, z0: -42, z1: -17 },
+      { x0: 14, x1: 24, z0: -17.5, z1: -10.5 }
+    ],
+    bases: {
+      protest: { x: -26, z: 32, rally: { x: -26, z: 21 }, name: 'ישיבת נתיבות הכביש' },
+      police: { x: 30, z: -32, rally: { x: 30, z: -20 }, name: 'מוצב המחלף' },
+      van: { x: 38, z: -26 }
+    },
+    // נקודות חסימה למפגינים הממוחשבים
+    spots: [
+      { x: 0, z: 0, pri: 3, cap: 3 },
+      { x: -40, z: 5.9, pri: 2, cap: 1 }, { x: -40, z: -5.9, pri: 2, cap: 1 },
+      { x: 40, z: 5.9, pri: 2, cap: 1 }, { x: 40, z: -5.9, pri: 2, cap: 1 }
+    ]
+  };
+
+  // ---------------- גשר המיתרים (הכניסה לירושלים, מסוגנן) ----------------
+  // צומת עם רכבת קלה בשטח ההפרדה. רכבת שנתקעת — מקפיצה את הכותרות.
+  DEFS.gesher = {
+    id: 'gesher',
+    name: 'גשר המיתרים',
+    city: 'ירושלים',
+    blurb: 'הכניסה לעיר: צומת עם רכבת קלה באמצע הכביש. רכבת שנתקעת — שווה כותרות.',
+    bounds: { x0: -130, x1: 130, z0: -100, z1: 100 },
+    sunset: 480,
+    sidewalk: 4.5,
+    roads: [
+      { id: 'main', axis: 'x', c: 0, lanesPos: 2, lanesNeg: 2, median: 6.4, tram: true, tramSpeed: 11, speed: 12.5, inflow: 0.24 },
+      { id: 'cross', axis: 'z', c: 0, lanesPos: 1, lanesNeg: 1, speed: 10, inflow: 0.17 }
+    ],
+    tram: { every: [48, 75], len: 30 },
+    arms: { W: 'מכיוון הכניסה לעיר', E: 'מכיוון מרכז העיר', N: 'הכניסה הצפונית', S: 'הכניסה הדרומית' },
+    landmark: 'bridge',
+    buildings: [
+      { x0: -103, x1: -97, z0: -19.7, z1: -14.7, h: 2, style: 'pylon' },   // בסיס התורן של הגשר
+      // צפון-מערב
+      { x0: -38, x1: -9, z0: -32, z1: -16, h: 14, style: 'apt' },
+      { x0: -72, x1: -44, z0: -34, z1: -16, h: 16, style: 'apt' },
+      { x0: -38, x1: -9, z0: -72, z1: -40, h: 18, style: 'apt' },
+      { x0: -76, x1: -44, z0: -74, z1: -42, h: 13, style: 'apt' },
+      // צפון-מזרח: תחנת המשטרה
+      { x0: 10, x1: 42, z0: -58, z1: -44, h: 8, style: 'police', sign: 'משטרה — מוצב הכניסה לעיר' },
+      { x0: 50, x1: 78, z0: -34, z1: -16, h: 17, style: 'apt' },
+      { x0: 84, x1: 112, z0: -32, z1: -16, h: 12, style: 'apt' },
+      { x0: 50, x1: 80, z0: -74, z1: -42, h: 15, style: 'apt' },
+      { x0: 116, x1: 130, z0: -34, z1: -16, h: 14, style: 'apt' },
+      // דרום-מערב (קרוב למצלמה): הישיבה
+      { x0: -42, x1: -10, z0: 38, z1: 52, h: 10, style: 'yeshiva', sign: 'ישיבת שער העיר' },
+      { x0: -72, x1: -48, z0: 16, z1: 28, h: 5, style: 'shop', sign: 'מאפיית הכניסה' },
+      { x0: -74, x1: -48, z0: 34, z1: 62, h: 9, style: 'apt' },
+      // דרום-מזרח
+      { x0: 9, x1: 34, z0: 16, z1: 27, h: 5, style: 'shop', sign: 'מכולת הגשר' },
+      { x0: 40, x1: 66, z0: 16, z1: 28, h: 6, style: 'shop', sign: 'פלאפל הכניסה' },
+      { x0: 72, x1: 100, z0: 16, z1: 27, h: 5, style: 'shop', sign: 'ספרי קודש' },
+      { x0: 9, x1: 32, z0: 34, z1: 62, h: 9, style: 'apt' },
+      { x0: 40, x1: 70, z0: 34, z1: 62, h: 8, style: 'apt' },
+      { x0: 106, x1: 130, z0: 16, z1: 28, h: 6, style: 'apt' }
+    ],
+    plazas: [
+      { x0: -40, x1: -10, z0: 14.7, z1: 36, kind: 'yeshiva' },
+      { x0: 9, x1: 44, z0: -42, z1: -14.7, kind: 'police' }
+    ],
+    vehicleZones: [
+      { x0: 9, x1: 44, z0: -42, z1: -14.7 },
+      { x0: 13, x1: 25, z0: -15, z1: -9 }
+    ],
+    bases: {
+      protest: { x: -25, z: 28, rally: { x: -24, z: 19 }, name: 'ישיבת שער העיר' },
+      police: { x: 30, z: -31, rally: { x: 24, z: -19 }, name: 'מוצב הכניסה לעיר' },
+      van: { x: 17, z: -26 }
+    },
+    spots: [
+      { x: 0, z: 0, pri: 3, cap: 2 },
+      { x: -22, z: 0, pri: 3, cap: 2 },
+      { x: 22, z: 0, pri: 2, cap: 2 },
+      { x: 0, z: -20, pri: 1, cap: 1 }, { x: 0, z: 20, pri: 1, cap: 1 }
+    ]
+  };
+
   // ---------------- בניית מבנה הריצה ----------------
   function buildMap(id, BAL) {
     const def = DEFS[id];
@@ -80,15 +220,17 @@
     const b = def.bounds;
     const m = {
       def, id: def.id, name: def.name, bounds: b, sidewalk: def.sidewalk,
-      roads: [], lanes: [], junctions: [], buildings: def.buildings.slice(), plazas: def.plazas || [],
-      bases: def.bases, arms: {}, sunset: def.sunset, vehicleZones: def.vehicleZones || []
+      roads: [], lanes: [], junctions: [],
+      // קירות אקוסטיים ומעקות נחשבים כמכשולים (כמו בניינים) לניווט
+      buildings: def.buildings.concat(def.walls || []), plazas: def.plazas || [],
+      bases: def.bases, arms: {}, sunset: def.sunset, vehicleZones: def.vehicleZones || [],
+      lights: def.lights || null, spots: def.spots || null, tram: def.tram || null
     };
 
     def.roads.forEach(r => {
-      const halfW = laneW * (r.lanesPos + r.lanesNeg) / 2;
-      const road = Object.assign({}, r, { halfW });
-      // אם מספר הנתיבים לא סימטרי — קו המרכז זז; כאן תמיד סימטרי
-      m.roads.push(road);
+      const median = r.median || 0;
+      const halfW = laneW * (r.lanesPos + r.lanesNeg) / 2 + median / 2;
+      m.roads.push(Object.assign({}, r, { halfW, median }));
     });
 
     // צמתים — כל זוג כבישים ניצבים שנחתכים
@@ -101,20 +243,28 @@
         roads: [rx.id, rz.id]
       });
     }));
+    // מעבר חציה עם רמזור על כביש אחד (בלי כביש חוצה)
+    (def.crossings || []).forEach(cr => {
+      const r = m.roads.find(q => q.id === cr.road);
+      if (r.axis === 'x') m.junctions.push({ x: cr.at, z: r.c, x0: cr.at - cr.w / 2, x1: cr.at + cr.w / 2, z0: r.c - r.halfW, z1: r.c + r.halfW, roads: [r.id], crossing: true });
+      else m.junctions.push({ x: r.c, z: cr.at, x0: r.c - r.halfW, x1: r.c + r.halfW, z0: cr.at - cr.w / 2, z1: cr.at + cr.w / 2, roads: [r.id], crossing: true });
+    });
 
     // נתיבים
     let laneId = 0;
     m.roads.forEach(r => {
-      const make = (dir, i) => {
-        const L = { id: laneId++, road: r.id, axis: r.axis, dir, speed: r.speed, inflow: r.inflow };
+      const make = (dir, i, tram) => {
+        const L = { id: laneId++, road: r.id, axis: r.axis, dir, speed: tram ? (r.tramSpeed || 11) : r.speed, inflow: tram ? 0 : r.inflow, tram: !!tram };
+        // היסט מהמרכז: חצי שטח הפרדה + הנתיבים; פסי רכבת באמצע שטח ההפרדה
+        const o = tram ? r.median / 4 : r.median / 2 + laneW * (i + 0.5);
         if (r.axis === 'x') {
-          L.off = r.c + dir * laneW * (i + 0.5);      // נסיעה מזרחה = צד דרומי (z חיובי)
+          L.off = r.c + dir * o;      // נסיעה מזרחה = צד דרומי (z חיובי)
           L.p0 = { x: dir > 0 ? b.x0 : b.x1, z: L.off };
           L.dx = dir; L.dz = 0;
           L.len = b.x1 - b.x0;
           L.arm = dir > 0 ? 'W' : 'E';
         } else {
-          L.off = r.c - dir * laneW * (i + 0.5);      // נסיעה דרומה = צד מערבי (x שלילי)
+          L.off = r.c - dir * o;      // נסיעה דרומה = צד מערבי (x שלילי)
           L.p0 = { x: L.off, z: dir > 0 ? b.z0 : b.z1 };
           L.dx = 0; L.dz = dir;
           L.len = b.z1 - b.z0;
@@ -135,6 +285,7 @@
       };
       for (let i = 0; i < r.lanesPos; i++) make(1, i);
       for (let i = 0; i < r.lanesNeg; i++) make(-1, i);
+      if (r.tram) { make(1, 0, true); make(-1, 0, true); }
     });
 
     // נקודות הכניסות (לתוויות פקק ולהתראות)
@@ -143,7 +294,7 @@
       N: { x: 0, z: b.z0 + 12 }, S: { x: 0, z: b.z1 - 12 }
     };
     Object.keys(def.arms || {}).forEach(k => {
-      const lanes = m.lanes.filter(l => l.arm === k);
+      const lanes = m.lanes.filter(l => l.arm === k && !l.tram);
       if (!lanes.length) return;
       m.arms[k] = { id: k, name: def.arms[k], x: armPos[k].x, z: armPos[k].z, lanes };
     });
@@ -182,6 +333,7 @@
     m.lanesAt = function (x, z, rad) {
       const out = [];
       for (const L of m.lanes) {
+        if (L.tram) continue;
         const hw = laneW / 2 + rad;
         if (L.axis === 'x') { if (Math.abs(z - L.off) < hw) out.push(L); }
         else if (Math.abs(x - L.off) < hw) out.push(L);

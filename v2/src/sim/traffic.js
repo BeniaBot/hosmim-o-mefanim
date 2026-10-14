@@ -14,10 +14,13 @@
       this.cars = [];
       this.nextId = 1;
       this.lanes = this.map.lanes.map(L => ({
-        L, cars: [], backlog: 0, arrAcc: this.rng.f(0, 1), obs: [], jamCars: 0, inflowMul: 1
+        L, cars: [], backlog: 0, arrAcc: this.rng.f(0, 1), obs: [], jamCars: 0, inflowMul: 1,
+        nextTram: L.tram ? this.rng.f(4, 25) : 0
       }));
+      this.cycle = this.map.lights || this.B.lights;
+      this.tramBlocked = false;
       this.phase = 0;
-      this.phaseT = this.B.lights[0].t;
+      this.phaseT = this.cycle[0].t;
       this.light = { x: 'G', z: 'R' };
       this.applyPhase();
       this.jamKm = 0;
@@ -27,7 +30,7 @@
     }
 
     applyPhase() {
-      const g = this.B.lights[this.phase].g;
+      const g = this.cycle[this.phase].g;
       this.light.x = g === 'x' ? 'G' : g === 'xy' ? 'Y' : 'R';
       this.light.z = g === 'z' ? 'G' : g === 'zy' ? 'Y' : 'R';
     }
@@ -40,7 +43,7 @@
     }
 
     makeCar(lane, d, v) {
-      const t = this.pickType();
+      const t = lane.L.tram ? { id: 'tram', len: (this.map.tram && this.map.tram.len) || 30, w: 2.65, accel: 1.0 } : this.pickType();
       const car = {
         id: this.nextId++, lane, type: t.id, len: t.len, wid: t.w, accel: t.accel || this.B.idm.a,
         d, v, stopT: 0, jammed: false, braking: false, color: this.rng.i(0, 7),
@@ -63,6 +66,7 @@
     prefill() {
       for (const lane of this.lanes) {
         const L = lane.L;
+        if (L.tram) continue;
         let d = L.len - this.rng.f(5, 25);
         while (d > 10) {
           // לא ממקמים בתוך הצומת
@@ -82,8 +86,8 @@
       // רמזור
       this.phaseT -= dt;
       if (this.phaseT <= 0) {
-        this.phase = (this.phase + 1) % this.B.lights.length;
-        this.phaseT += this.B.lights[this.phase].t;
+        this.phase = (this.phase + 1) % this.cycle.length;
+        this.phaseT += this.cycle[this.phase].t;
         this.applyPhase();
       }
       this.buildObstacles();
@@ -231,6 +235,20 @@
       const B = this.B;
       for (const lane of this.lanes) {
         const L = lane.L;
+        if (L.tram) {
+          // רכבת קלה: לפי לוח זמנים, לא לפי זרימה
+          lane.nextTram -= dt;
+          if (lane.nextTram <= 0) {
+            const last = lane.cars[lane.cars.length - 1];
+            if (!last || last.d - last.len > 40) {
+              const ev = (this.map.tram && this.map.tram.every) || [50, 80];
+              lane.nextTram = this.rng.f(ev[0], ev[1]);
+              const car = this.makeCar(lane, 0.01, L.speed);
+              lane.cars.push(car); this.cars.push(car);
+            }
+          }
+          continue;
+        }
         lane.arrAcc += L.inflow * lane.inflowMul * dt * this.rng.f(0.4, 1.6);
         while (lane.arrAcc >= 1) { lane.arrAcc -= 1; lane.backlog += 1; }
         const last = lane.cars[lane.cars.length - 1];
@@ -257,7 +275,12 @@
       const per = this.B.jamCarLen / 1000;
       let total = 0;
       this.armJam = {};
+      this.tramBlocked = false;
       for (const lane of this.lanes) {
+        if (lane.L.tram) {
+          for (const c of lane.cars) if (c.jammed && c.stopT > 4) this.tramBlocked = true;
+          continue;
+        }
         let n = 0;
         for (const c of lane.cars) if (c.jammed) n++;
         const last = lane.cars[lane.cars.length - 1];

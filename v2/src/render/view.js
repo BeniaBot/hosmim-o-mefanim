@@ -190,6 +190,7 @@
 
       // ---- עצים, פנסים, רמזורים ----
       this.buildProps(EXT);
+      if (map.def.landmark === 'bridge') this.buildBridge();
     }
 
     splitByJunctions(a, c, cuts) {
@@ -204,47 +205,72 @@
     buildMarkings(EXT) {
       const map = this.world.map, b = map.bounds, parts = [];
       const W = 0xf2f2ee, Y = 0xe8c547;
-      const strip = (x0, x1, z0, z1, hex) => parts.push(M.part(M.box(x1 - x0, 0.02, z1 - z0), hex, (x0 + x1) / 2, 0.012, (z0 + z1) / 2));
+      const strip = (x0, x1, z0, z1, hex, y) => parts.push(M.part(M.box(x1 - x0, 0.02, z1 - z0), hex, (x0 + x1) / 2, y || 0.012, (z0 + z1) / 2));
+      // פס לאורך הכביש בהיסט o מהמרכז
+      const along = (r, a, c, o, w, hex, y) => {
+        if (r.axis === 'x') strip(a, c, r.c + o - w / 2, r.c + o + w / 2, hex, y);
+        else strip(r.c + o - w / 2, r.c + o + w / 2, a, c, hex, y);
+      };
       const laneW = this.world.BAL.traffic.laneW;
       for (const r of map.roads) {
-        const n = r.lanesPos;
-        const along = r.axis === 'x' ? [b.x0 - EXT, b.x1 + EXT] : [b.z0 - EXT, b.z1 + EXT];
-        const cuts = map.junctions.map(j => r.axis === 'x' ? [j.x0 - 4.5, j.x1 + 4.5] : [j.z0 - 4.5, j.z1 + 4.5]);
-        const segs = this.splitByJunctions(along[0], along[1], cuts);
+        const n = r.lanesPos, med = r.median || 0;
+        const span = r.axis === 'x' ? [b.x0 - EXT, b.x1 + EXT] : [b.z0 - EXT, b.z1 + EXT];
+        const cuts = map.junctions.filter(j => j.roads.includes(r.id))
+          .map(j => r.axis === 'x' ? [j.x0 - 4.5, j.x1 + 4.5] : [j.z0 - 4.5, j.z1 + 4.5]);
+        const segs = this.splitByJunctions(span[0], span[1], cuts);
         for (const [a, c] of segs) {
-          // קו מרכז כפול
-          for (const o of [-0.14, 0.14]) {
-            if (r.axis === 'x') strip(a, c, r.c + o - 0.06, r.c + o + 0.06, Y); else strip(r.c + o - 0.06, r.c + o + 0.06, a, c, Y);
+          if (med <= 0) {
+            for (const o of [-0.14, 0.14]) along(r, a, c, o, 0.12, Y);           // קו מרכז כפול
+          } else {
+            for (const sg of [-1, 1]) along(r, a, c, sg * (med / 2 - 0.15), 0.14, W);  // שולי שטח ההפרדה
           }
-          // קווי שוליים
-          for (const o of [-(r.halfW - 0.3), r.halfW - 0.3]) {
-            if (r.axis === 'x') strip(a, c, r.c + o - 0.07, r.c + o + 0.07, W); else strip(r.c + o - 0.07, r.c + o + 0.07, a, c, W);
-          }
-          // קווים מקווקווים בין נתיבים באותו כיוון
+          for (const sg of [-1, 1]) along(r, a, c, sg * (r.halfW - 0.3), 0.14, W);       // קווי שוליים
+          // מקווקו בין נתיבים באותו כיוון
           for (let i = 1; i < n; i++) {
-            for (const sgn of [-1, 1]) {
-              const o = sgn * laneW * i;
+            for (const sg of [-1, 1]) {
+              const o = sg * (med / 2 + laneW * i);
               for (let d = a + 1; d < c - 3; d += 9) {
                 if (r.axis === 'x') strip(d, d + 3, r.c + o - 0.07, r.c + o + 0.07, W); else strip(r.c + o - 0.07, r.c + o + 0.07, d, d + 3, W);
               }
             }
           }
         }
+        // שטח הפרדה עם מסילה (לכל האורך, גם בתוך הצומת)
+        if (r.tram) {
+          const tb = r.axis === 'x' ? [b.x0 - EXT, b.x1 + EXT] : [b.z0 - EXT, b.z1 + EXT];
+          along(r, tb[0], tb[1], 0, med - 0.4, 0x9c978c, 0.006);
+          for (const t of [-med / 4, med / 4]) {
+            along(r, tb[0], tb[1], t, 2.0, 0x6f6a62, 0.009);                   // מצע
+            for (const rr of [-0.72, 0.72]) along(r, tb[0], tb[1], t + rr, 0.09, 0xb8bcc2, 0.03); // פסים
+          }
+        }
       }
       // מעברי חציה וקווי עצירה
       for (const j of map.junctions) {
-        const rx = map.roads.find(r => r.id === j.roads[0]), rz = map.roads.find(r => r.id === j.roads[1]);
-        // מעברי חציה על הכביש הראשי (מערב/מזרח לצומת)
+        const rs = j.roads.map(id => map.roads.find(r => r.id === id));
+        const rx = rs.find(r => r.axis === 'x'), rz = rs.find(r => r.axis === 'z');
+        if (j.crossing) {
+          // מעבר חציה על כל רוחב הכביש, בתוך תחום הצומת
+          const r = rs[0];
+          if (r.axis === 'x') { for (let z = r.c - r.halfW + 0.6; z < r.c + r.halfW - 0.4; z += 1.2) strip(j.x0 + 0.5, j.x1 - 0.5, z, z + 0.6, W); }
+          else { for (let x = r.c - r.halfW + 0.6; x < r.c + r.halfW - 0.4; x += 1.2) strip(x, x + 0.6, j.z0 + 0.5, j.z1 - 0.5, W); }
+          continue;
+        }
         for (const sgn of [-1, 1]) {
-          const x0 = sgn < 0 ? j.x0 - 4.2 : j.x1 + 0.6, x1 = x0 + 3.6;
-          for (let z = rx.c - rx.halfW + 0.6; z < rx.c + rx.halfW - 0.4; z += 1.2) strip(x0, x1, z, z + 0.6, W);
-          const z0 = sgn < 0 ? j.z0 - 4.2 : j.z1 + 0.6, z1 = z0 + 3.6;
-          for (let x = rz.c - rz.halfW + 0.5; x < rz.c + rz.halfW - 0.4; x += 1.2) strip(x, x + 0.6, z0, z1, W);
+          if (rx) {
+            const x0 = sgn < 0 ? j.x0 - 4.2 : j.x1 + 0.6, x1 = x0 + 3.6;
+            for (let z = rx.c - rx.halfW + 0.6; z < rx.c + rx.halfW - 0.4; z += 1.2) strip(x0, x1, z, z + 0.6, W);
+          }
+          if (rz) {
+            const z0 = sgn < 0 ? j.z0 - 4.2 : j.z1 + 0.6, z1 = z0 + 3.6;
+            for (let x = rz.c - rz.halfW + 0.5; x < rz.c + rz.halfW - 0.4; x += 1.2) strip(x, x + 0.6, z0, z1, W);
+          }
         }
       }
       for (const L of map.lanes) {
+        if (L.tram) continue;
         for (const bx of L.boxes) {
-          const p = map.lanePos(L, bx.stopD - 3.4);
+          const p = map.lanePos(L, bx.stopD - (bx.j.crossing ? 0.4 : 3.4));
           if (L.axis === 'x') strip(p.x - 0.22, p.x + 0.22, L.off - laneW / 2 + 0.15, L.off + laneW / 2 - 0.15, W);
           else strip(L.off - laneW / 2 + 0.15, L.off + laneW / 2 - 0.15, p.z - 0.22, p.z + 0.22, W);
         }
@@ -264,8 +290,29 @@
       let seed = 1;
       const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
       const heaters = [];
+      const wallParts = [];
       for (const B of all) {
         const h = B.h, st = B.style || 'apt';
+        if (st === 'pylon') continue;
+        if (st === 'wall' || st === 'barrier') {
+          // קיר אקוסטי / מעקה בטון
+          const w = B.x1 - B.x0, d = B.z1 - B.z0, cx = (B.x0 + B.x1) / 2, cz = (B.z0 + B.z1) / 2;
+          if (st === 'barrier') {
+            wallParts.push(M.part(M.box(w, 0.32, d + 0.25), 0xb9b4aa, cx, 0.16, cz));
+            wallParts.push(M.part(M.box(w, h - 0.32, d * 0.7), 0xcbc6bb, cx, 0.32 + (h - 0.32) / 2, cz));
+          } else {
+            wallParts.push(M.part(M.box(w, h, d), 0xc9cfd2, cx, CURB_H + h / 2, cz));
+            wallParts.push(M.part(M.box(w + 0.1, 0.25, d + 0.12), 0x8e979c, cx, CURB_H + h, cz));
+            // עמודים כל 4 מטר
+            const along = w > d;
+            const L = along ? w : d;
+            for (let k = 0; k <= L; k += 4) {
+              const px = along ? B.x0 + k : cx, pz = along ? cz : B.z0 + k;
+              wallParts.push(M.part(M.box(along ? 0.22 : d + 0.16, h + 0.1, along ? d + 0.16 : 0.22), 0x9aa3a8, px, CURB_H + h / 2, pz));
+            }
+          }
+          continue;
+        }
         const list = groups[st] || groups.apt;
         const th = st === 'shop' ? h : 3, tw = 4;
         list.push(wall(B.x0, B.z1, B.x1, B.z1, h, CURB_H, tw, th));            // דרום
@@ -298,6 +345,11 @@
         const mesh = new T.Mesh(mergeUV(groups[k]), mat);
         mesh.castShadow = true; mesh.receiveShadow = true;
         R.add(mesh);
+      }
+      if (wallParts.length) {
+        const wm = new T.Mesh(M.merge(wallParts), this.mat(new T.MeshLambertMaterial({ vertexColors: true })));
+        wm.castShadow = true; wm.receiveShadow = true;
+        R.add(wm);
       }
       const roof = new T.Mesh(M.merge(roofParts), this.mat(new T.MeshLambertMaterial({ vertexColors: true })));
       roof.castShadow = true; roof.receiveShadow = true;
@@ -340,6 +392,45 @@
         if (d < bd) { bd = d; best = c; }
       }
       return best;
+    }
+
+    // גשר המיתרים: תורן לבן נטוי עם כבלים כמו מיתרי נבל (תפאורה)
+    buildBridge() {
+      const map = this.world.map, R = this.root;
+      const r = map.roads.find(q => q.axis === 'x');
+      const base = { x: -100, z: r.c - r.halfW - 6.5 };
+      const dir = new T.Vector3(0.42, 1, 0.3).normalize();
+      const H = 58;
+      const parts = [];
+      const g = M.cyl(0.7, 1.6, H, 6);
+      const top = { x: base.x + dir.x * H, y: dir.y * H, z: base.z + dir.z * H };
+      const pm = new T.Mesh(g, this.mat(new T.MeshLambertMaterial({ color: M.lin(0xf4f4f2) })));
+      pm.position.set(base.x + dir.x * H / 2, dir.y * H / 2, base.z + dir.z * H / 2);
+      pm.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
+      pm.castShadow = true;
+      R.add(pm);
+      // כבלים: מנקודות לאורך החצי העליון של התורן אל שולי הכביש מערבה
+      const cm = this.mat(new T.MeshBasicMaterial({ color: 0xe8ecef }));
+      const N = 18;
+      for (let i = 0; i < N; i++) {
+        const t = 0.45 + 0.55 * i / (N - 1);
+        const a = new T.Vector3(base.x + dir.x * H * t, dir.y * H * t, base.z + dir.z * H * t);
+        for (const side of [-1, 1]) {
+          const b2 = new T.Vector3(-108 - i * 5.2, 1.2, r.c + side * (r.halfW + 0.2));
+          const len = a.distanceTo(b2);
+          const cg = M.cyl(0.05, 0.05, len, 4);
+          const c = new T.Mesh(cg, cm);
+          c.position.copy(a).add(b2).multiplyScalar(0.5);
+          c.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), b2.clone().sub(a).normalize());
+          R.add(c);
+        }
+      }
+      // מעקה לבן לאורך "הגשר"
+      for (const side of [-1, 1]) parts.push(M.part(M.box(110, 1.1, 0.25), 0xf4f4f2, -158, 0.55, r.c + side * (r.halfW + 0.25)));
+      const rail = new T.Mesh(M.merge(parts), this.mat(new T.MeshLambertMaterial({ vertexColors: true })));
+      rail.castShadow = true;
+      R.add(rail);
+      void top;
     }
 
     // בניינים מחוץ לשטח המשחק — שהעיר לא תיגמר בפתאומיות
@@ -418,12 +509,13 @@
       const tlGeo = M.trafficLight();
       const tlMat = this.mat(new T.MeshLambertMaterial({ vertexColors: true }));
       for (const j of map.junctions) {
-        const spots = [
+        let spots = [
           { x: j.x0 - 1.2, z: j.z1 + 1.3, ax: 'x', face: -Math.PI / 2 },   // לנוסעים מזרחה (מערב)
           { x: j.x1 + 1.2, z: j.z0 - 1.3, ax: 'x', face: Math.PI / 2 },
           { x: j.x0 - 1.3, z: j.z0 - 1.2, ax: 'z', face: Math.PI },        // לנוסעים דרומה (צפון)
           { x: j.x1 + 1.3, z: j.z1 + 1.2, ax: 'z', face: 0 }
         ];
+        if (j.crossing) spots = spots.slice(0, 2);
         for (const s of spots) {
           const pole = new T.Mesh(tlGeo, tlMat);
           pole.position.set(s.x, CURB_H, s.z); pole.rotation.y = s.face; pole.castShadow = true;
@@ -511,6 +603,8 @@
         this.cars[t] = inst(M.car(t), cm, t === 'bus' ? 60 : 260, { color: true, shadow: true });
         R.add(this.cars[t]);
       }
+      this.cars.tram = inst(M.tram(), cm, 8, { color: true, shadow: true });
+      R.add(this.cars.tram);
       const brakeGeo = new T.PlaneGeometry(0.34, 0.16);
       this.brakes = inst(brakeGeo, this.mat(new T.MeshBasicMaterial({ color: 0xff3a2a, side: T.DoubleSide })), 400);
       R.add(this.brakes);
@@ -678,7 +772,7 @@
       this.tRings.count = ti; this.tRings.instanceMatrix.needsUpdate = true;
 
       // ---- מכוניות ----
-      const cc = { sedan: 0, hatch: 0, van: 0, taxi: 0, bus: 0 };
+      const cc = { sedan: 0, hatch: 0, van: 0, taxi: 0, bus: 0, tram: 0 };
       let bri = 0;
       const putCar = (type, x, z, heading, color, braking) => {
         const m = this.cars[type];
@@ -688,8 +782,8 @@
         setM(m, i, x, 0, z, heading, 0, 0, 1);
         m.setColorAt(i, _c.setHex(color));
         if (braking && bri < 398) {
-          const L = type === 'bus' ? 12 : type === 'hatch' ? 3.9 : type === 'van' ? 5.2 : 4.6;
-          const W = type === 'bus' ? 2.5 : 1.8;
+          const L = type === 'tram' ? 30 : type === 'bus' ? 12 : type === 'hatch' ? 3.9 : type === 'van' ? 5.2 : 4.6;
+          const W = type === 'tram' ? 2.6 : type === 'bus' ? 2.5 : 1.8;
           const sx = Math.sin(heading), sz = Math.cos(heading);
           const bx = x - sx * (L / 2 + 0.04), bz = z - sz * (L / 2 + 0.04);
           const ox = Math.cos(heading) * (W / 2 - 0.3), oz = -Math.sin(heading) * (W / 2 - 0.3);
@@ -699,7 +793,7 @@
       };
       for (const c of w.traffic.cars) {
         const x = U.lerp(c.px, c.x, alpha), z = U.lerp(c.pz, c.z, alpha);
-        const col = c.type === 'taxi' ? 0xf2c230 : c.type === 'bus' ? 0xf4f2ec : CAR_COLORS[c.color];
+        const col = c.type === 'taxi' ? 0xf2c230 : (c.type === 'bus' || c.type === 'tram') ? 0xffffff : CAR_COLORS[c.color];
         putCar(c.type, x, z, c.heading, col, c.braking || c.v < 0.3);
       }
       // הפקק ממשיך מחוץ למפה — מכוניות עומדות מעבר לקצה

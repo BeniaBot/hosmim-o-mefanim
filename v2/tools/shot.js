@@ -61,6 +61,28 @@ const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
     await p.waitForTimeout(800);
     await p.screenshot({ path: OUT + '/close-3.png' });
   }
+  if (scenario === 'maps') {
+    for (const id of ['kvish4', 'gesher']) {
+      await p.click(`#mapSeg .segBtn[data-map="${id}"]`);
+      await p.click('#btnStart');
+      await p.waitForTimeout(1200);
+      await p.screenshot({ path: OUT + `/map-${id}-0.png` });
+      await p.evaluate(() => { const w = HM.Game.world; w.ai.protest = new HM.ProtestAI(w, 'bot'); });
+      await ff(100);
+      await p.waitForTimeout(500);
+      await p.screenshot({ path: OUT + `/map-${id}-1.png` });
+      await p.evaluate(() => { const c = HM.Game.stage.cam; c.dist = 150; c.pitch = 0.75; c.yaw = 0.55; c.tx = -30; c.tz = 0; document.getElementById('hud').style.display = 'none'; });
+      await p.waitForTimeout(600);
+      await p.screenshot({ path: OUT + `/map-${id}-wide.png` });
+      await p.evaluate(() => { const c = HM.Game.stage.cam; c.dist = 38; c.pitch = 0.7; c.yaw = 0.3; c.tx = 0; c.tz = 0; });
+      await p.waitForTimeout(600);
+      await p.screenshot({ path: OUT + `/map-${id}-close.png` });
+      await p.evaluate(() => { document.getElementById('hud').style.display = ''; });
+      await p.keyboard.press('KeyP');
+      await p.click('#btnQuit');
+      await p.waitForTimeout(800);
+    }
+  }
   if (scenario === 'police') {
     await p.click('#sideSeg .segBtn[data-side="police"]');
     await p.click('#btnStart');

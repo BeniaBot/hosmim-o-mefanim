@@ -422,8 +422,16 @@
       const km = this.traffic.jamKm;
       this.stats.jamPeak = Math.max(this.stats.jamPeak, km);
       let rate;
-      if (km > Hb.deadzoneKm) rate = Math.min(Hb.maxRate, Hb.perKmSec * (km - Hb.deadzoneKm));
+      const mm = (Hb.mapMul && Hb.mapMul[this.map.id]) || 1;
+      if (km > Hb.deadzoneKm) rate = Math.min(Hb.maxRate, Hb.perKmSec * mm * (km - Hb.deadzoneKm));
       else rate = -Hb.decay;
+      // רכבת קלה תקועה — תמונה שכל אתר חדשות רוצה
+      if (this.traffic.tramBlocked) {
+        rate = Math.max(rate, 0) + Hb.tramBlocked;
+        if (!this.tramWasBlocked) this.events.push('tramBlocked', {});
+        this.stats.tramT = (this.stats.tramT || 0) + dt;
+      }
+      this.tramWasBlocked = this.traffic.tramBlocked;
       this.Hrate = rate;
       this.H = U.clamp(this.H + rate * dt, 0, 100);
       this.Hpeak = Math.max(this.Hpeak, this.H);

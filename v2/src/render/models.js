@@ -247,6 +247,31 @@
     }
     return merge(p);
   }
+  // רכבת קלה: גוף ארוך עם שלושה קרונות מחוברים
+  function tram() {
+    const p = [], W = 2.65, L = 30, H = 3.3;
+    const secs = [[-15, -5.2], [-4.8, 4.8], [5.2, 15]];
+    for (const [a, c] of secs) {
+      const len = c - a, cz = (a + c) / 2;
+      p.push(part(box(W, H - 0.5, len), 0xf2f3f4, 0, 0.5 + (H - 0.5) / 2, cz));
+      p.push(part(box(W + 0.02, 1.0, len - 0.6), GLASS, 0, 2.15, cz));
+      p.push(part(box(W + 0.03, 0.22, len), 0x3c6e9e, 0, 1.25, cz));
+      p.push(part(box(W - 0.1, 0.35, len - 0.2), 0x55595f, 0, 0.32, cz));
+    }
+    // מפרקים
+    for (const z of [-5, 5]) p.push(part(box(W - 0.2, H - 0.7, 0.45), 0x3a3d42, 0, 1.85, z));
+    // חזיתות מעוגלות
+    for (const sg of [-1, 1]) {
+      p.push(part(box(W - 0.1, 1.2, 0.5), GLASS, 0, 2.2, sg * 15.15));
+      p.push(part(box(0.5, 0.18, 0.1), 0xfff2c4, 0.8, 1.0, sg * 15.25));
+      p.push(part(box(0.5, 0.18, 0.1), 0xfff2c4, -0.8, 1.0, sg * 15.25));
+    }
+    // פנטוגרף
+    p.push(part(box(0.9, 0.08, 1.4), 0x2a2a2a, 0, H + 0.45, 0));
+    p.push(part(box(0.08, 0.7, 0.08), 0x2a2a2a, 0, H + 0.12, 0.4, 0.5, 0, 0));
+    return merge(p);
+  }
+
   // מכת"זית: גוף (צריח בנפרד)
   function cannonBody() {
     const p = [], W = 2.5, L = 7.4, BL = 0x2c4f86, WH = 0xeef0f2;
@@ -339,7 +364,7 @@
   }
 
   HM.Models = {
-    lin, part, merge, box, cyl, sph,
+    lin, part, merge, box, cyl, sph, tram,
     bochur, avrech, askan, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier
   };

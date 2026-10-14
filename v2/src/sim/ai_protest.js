@@ -24,6 +24,7 @@
 
     makeSpots() {
       const m = this.w.map, out = [];
+      if (m.spots) return m.spots.map(s => Object.assign({}, s));
       for (const j of m.junctions) out.push({ x: j.x, z: j.z, pri: 3, cap: 2 });
       for (const k of Object.keys(m.arms)) {
         const a = m.arms[k];

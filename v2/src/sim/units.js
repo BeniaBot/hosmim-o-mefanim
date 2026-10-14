@@ -224,15 +224,15 @@
       p.path = foot.path(p.x, p.z, tx, tz);
       p.pathI = 0; p.pathT = 1.0; p.pathGoal = { x: tx, z: tz };
     }
-    let wx = tx, wz = tz;
+    let wx = tx, wz = tz, final = true;
     if (p.path && p.pathI < p.path.length - 1) {
       const w = p.path[p.pathI];
       if (U.dist2(p.x, p.z, w.x, w.z) < 1.2) p.pathI++;
-      wx = p.path[p.pathI].x; wz = p.path[p.pathI].z;
+      if (p.pathI < p.path.length - 1) { wx = p.path[p.pathI].x; wz = p.path[p.pathI].z; final = false; }
     }
-    if (p.path && p.pathI >= p.path.length - 1) { wx = tx; wz = tz; }
-    return steer(world, p, wx, wz, speed, dt, stopDist) <= (stopDist || 0.12) + 0.05
-      && U.dist(p.x, p.z, tx, tz) <= (stopDist || 0.12) + 0.6;
+    // מרחק העצירה חל רק על היעד הסופי — לא על נקודות ביניים במסלול
+    steer(world, p, wx, wz, speed, dt, final ? stopDist : 0.1);
+    return final && U.dist(p.x, p.z, tx, tz) <= (stopDist || 0.12) + 0.6;
   }
 
   // ---------- עדכון חוליה ----------
