@@ -132,6 +132,7 @@
 
     addHeadline(amount, reason, x, z) {
       this.H = U.clamp(this.H + amount, 0, 100);
+      this.Hpeak = Math.max(this.Hpeak, this.H);
       this.stats.scandals += (reason === 'horseScandal' || reason === 'askanArrest') ? 1 : 0;
       this.events.push('headline', { amount, reason, x, z });
       if (this.H >= 100 && !this.outcome) this.finish('protest', 'headlines');

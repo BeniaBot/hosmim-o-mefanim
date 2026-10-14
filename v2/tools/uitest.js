@@ -1,0 +1,157 @@
+// בדיקת ממשק: לוחצים באמת על כל כפתור ובודקים שקרה מה שכתוב עליו.
+// node v2/tools/uitest.js [outdir]
+const path = require('path');
+let pw; try { pw = require('playwright'); } catch (e) { pw = require('/opt/node22/lib/node_modules/playwright'); }
+const OUT = process.argv[2] || '.';
+const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
+const results = [];
+function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console.log((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : '')); }
+
+(async () => {
+  const b = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+  const p = await b.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = [];
+  p.on('pageerror', e => errs.push('PAGEERR ' + e.message));
+  p.on('console', m => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text()); });
+  await p.goto(URL);
+  await p.waitForTimeout(3000);
+  const ev = (f, a) => p.evaluate(f, a);
+  const ff = (sec) => ev((sec) => { const G = HM.Game, w = G.world; const n = Math.round(sec / w.BAL.dt); for (let i = 0; i < n && !w.outcome; i++) { w.step(); G.hud.handleEvents(w.events.drain()); } G.hud.update(0.2); G.hud.updateSelection(true); }, sec);
+  const visible = (id) => ev((id) => { const e = document.getElementById(id); return !!e && !e.classList.contains('hidden') && getComputedStyle(e).display !== 'none'; }, id);
+
+  // ---- תפריט ----
+  check('menu visible', await visible('menu'));
+  await p.click('#diffSeg .segBtn[data-diff="hard"]');
+  check('difficulty selection updates summary', (await p.textContent('#startSum')).includes('קשה'));
+  await p.click('#diffSeg .segBtn[data-diff="normal"]');
+  check('police side button disabled (coming soon)', await ev(() => document.querySelector('#sideSeg [data-side="police"]').disabled));
+  await p.click('#btnHow');
+  check('how-to opens', await visible('howto'));
+  await p.click('#btnHowBack');
+  check('how-to back returns to menu', await visible('menu'));
+  await p.click('#btnSettings');
+  check('settings opens', await visible('settings'));
+  await p.fill('#volSlider', '40');
+  await p.dispatchEvent('#volSlider', 'input');
+  check('volume slider sets volume', await ev(() => Math.abs(HM.Audio.vol - 0.4) < 0.01));
+  await p.click('#btnSetBack');
+  check('settings back', await visible('menu'));
+
+  // ---- התחלה ----
+  await p.click('#btnStart');
+  await p.waitForTimeout(800);
+  check('start shows HUD', await visible('hud'));
+  check('game mode is play', (await ev(() => HM.Game.mode)) === 'play');
+  check('difficulty passed to world', (await ev(() => HM.Game.world.difficulty)) === 'normal');
+  const n0 = await ev(() => HM.Game.world.squads.filter(s => s.side === 'protest').length);
+  check('starts with 4 protest squads', n0 === 4, n0);
+
+  // ---- קנייה בכרטיס ----
+  const money0 = await ev(() => HM.Game.world.money.protest);
+  await p.click('#buyCards .card:nth-child(1)');
+  const n1 = await ev(() => HM.Game.world.squads.filter(s => s.side === 'protest').length);
+  const money1 = await ev(() => HM.Game.world.money.protest);
+  check('buy card "bochurim" adds a squad and costs money', n1 === n0 + 1 && money0 - money1 > 100, { n1, spent: money0 - money1 });
+  await p.keyboard.press('KeyX');
+  const n2 = await ev(() => HM.Game.world.squads.filter(s => s.side === 'protest').length);
+  check('hotkey X buys avrechim (if affordable)', n2 === n1 + 1 || (await ev(() => HM.Game.world.money.protest)) < 150, n2);
+
+  // ---- בחירה בלחיצה על שלט ----
+  await ff(3);
+  await p.waitForTimeout(300);
+  const badge = await p.$('.badge.prot');
+  const bb = await badge.boundingBox();
+  await p.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+  await p.waitForTimeout(200);
+  check('click on badge selects squad', (await ev(() => HM.Game.input.selected.size)) === 1);
+  check('selection panel shows the squad', await visible('selBody'));
+
+  // ---- שליחה לכביש ----
+  const road = await ev(() => HM.Game.hud.project(-30, 0, 2.5));
+  await p.mouse.move(road.x, road.y);
+  await p.waitForTimeout(300);
+  check('hover shows lane-block hint', (await p.textContent('#hint')).length > 0, await p.textContent('#hint'));
+  await p.mouse.click(road.x, road.y);
+  const goal = await ev(() => { const s = HM.Game.world.squadById([...HM.Game.input.selected][0]); return s.goal; });
+  check('click on road sends squad there', Math.abs(goal.x + 30) < 2 && Math.abs(goal.z - 2.5) < 4, goal);
+  await ff(15);
+
+  // ---- לשבת ----
+  await p.click('#selActions .act');
+  await ff(4);
+  const st = await ev(() => { const s = HM.Game.world.squadById([...HM.Game.input.selected][0]); return { stance: s.stance, sit: s.members.map(m => m.sit.toFixed(1)).join() }; });
+  check('"sit" button makes squad sit', st.stance === 'sit', st);
+  await p.keyboard.press('KeyS');
+  await ff(3);
+  const st2 = await ev(() => HM.Game.world.squadById([...HM.Game.input.selected][0]).stance);
+  check('S key toggles back to standing', st2 === 'stand', st2);
+
+  // ---- גרירת מלבן ----
+  await p.keyboard.press('Escape');
+  check('Esc clears selection (not pause)', (await ev(() => HM.Game.input.selected.size)) === 0 && (await ev(() => HM.Game.mode)) === 'play');
+  await p.mouse.move(5, 300); await p.mouse.down(); await p.mouse.move(1360, 560, { steps: 5 }); await p.mouse.up();
+  const boxSel = await ev(() => HM.Game.input.selected.size);
+  check('drag box selects several squads', boxSel >= 2, boxSel);
+
+  // ---- מקשי מספר ----
+  await p.keyboard.press('Digit2');
+  const sel2 = await ev(() => { const id = [...HM.Game.input.selected][0]; return HM.Game.world.squadById(id).num; });
+  check('digit 2 selects squad #2', sel2 === 2, sel2);
+
+  // ---- עסקן ----
+  await ev(() => { const w = HM.Game.world; const a = w.squads.find(s => s.type === 'askan'); const pol = HM.Units.makeSquad(w, 'police', 'patrol', HM.Units.centroid(a).x + 3, HM.Units.centroid(a).z + 3); HM.Units.setGoal(w, pol, pol.members[0].x, pol.members[0].z); });
+  await ff(0.5);
+  await p.keyboard.press('KeyF');
+  await ff(0.2);
+  check('F: askan permit stalls nearby police', await ev(() => HM.Game.world.people.some(c => c.kind === 'cop' && c.state === 'stalled')));
+
+  // ---- שופר ----
+  await ff(45);
+  const cd0 = await ev(() => HM.Game.world.shofarCD);
+  await p.click('#buyCards .card:nth-child(4)');
+  const cd1 = await ev(() => HM.Game.world.shofarCD);
+  check('shofar card triggers shofar', cd0 === 0 && cd1 > 0, { cd0, cd1 });
+
+  // ---- כפתורי בקרה ----
+  await p.click('#btnSpeed');
+  check('speed button sets x2', (await ev(() => HM.Game.speed)) === 2 && (await p.textContent('#btnSpeed')) === '×2');
+  await p.click('#btnSpeed');
+  await p.click('#btnMute');
+  check('mute button mutes', await ev(() => HM.Audio.muted === true));
+  await p.click('#btnMute');
+  await p.click('#btnPause');
+  check('pause button pauses', (await ev(() => HM.Game.mode)) === 'paused' && await visible('pause'));
+  const t0 = await ev(() => HM.Game.world.t);
+  await p.waitForTimeout(600);
+  check('time stops while paused', (await ev(() => HM.Game.world.t)) === t0);
+  await p.click('#btnResume');
+  check('resume button resumes', (await ev(() => HM.Game.mode)) === 'play');
+  await p.keyboard.press('Space');
+  check('space pauses', (await ev(() => HM.Game.mode)) === 'paused');
+  await p.click('#btnRestart');
+  await p.waitForTimeout(600);
+  check('restart starts a fresh game', (await ev(() => HM.Game.mode)) === 'play' && (await ev(() => HM.Game.world.t)) < 2);
+  await p.screenshot({ path: OUT + '/ui-restart.png' });
+  await p.keyboard.press('KeyP');
+  await p.click('#btnQuit');
+  await p.waitForTimeout(600);
+  check('quit returns to menu', (await ev(() => HM.Game.mode)) === 'menu' && await visible('menu') && !(await visible('hud')));
+
+  // ---- ניצחון ----
+  await p.click('#btnStart');
+  await p.waitForTimeout(500);
+  await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
+  await p.waitForTimeout(2500);
+  check('reaching 100 shows a win end screen', await visible('end') && (await p.textContent('#endTitle')).includes('בכותרות'), await p.textContent('#endTitle'));
+  check('win shows stars', (await ev(() => document.querySelectorAll('#endStars .off').length)) < 3);
+  await p.screenshot({ path: OUT + '/ui-win.png' });
+  await p.click('#btnEndMenu');
+  await p.waitForTimeout(500);
+  check('end "to menu" button works', await visible('menu'));
+
+  console.log('\nerrors:', errs.length ? errs.join('\n') : 'none');
+  const fails = results.filter(r => !r.ok).length;
+  console.log(`\n${results.length - fails}/${results.length} passed`);
+  await b.close();
+  process.exit(fails || errs.length ? 1 : 0);
+})();
