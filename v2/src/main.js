@@ -116,20 +116,24 @@
 
     startGame() {
       HM.Audio.init();
-      const seed = (Math.random() * 1e9) | 0;
+      // ?seed=123 בכתובת — משחק שחוזר על עצמו (לבדיקות ולשחזור באגים)
+      const qs = /[?&]seed=(\d+)/.exec(root.location.search || '');
+      const seed = qs ? +qs[1] : (Math.random() * 1e9) | 0;
       const w = new HM.World({ seed, map: this.mapId, protest: this.side === 'protest' ? 'human' : 'ai', police: this.side === 'police' ? 'human' : 'ai', difficulty: this.diff });
       this.setWorld(w);
       this.demo = false;
       this.hud.bind(w, this.side);
       const cam = this.stage.cam;
-      cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98;
+      if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
+      else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
+      this.input.aimMega = false;
       this.camGoal = null;
       this.speed = 1; $('btnSpeed').textContent = '×1';
       $('hud').classList.remove('hidden');
       showScr(null);
       this.mode = 'play';
       this.endShown = false;
-      this.tutorial = store.get('tutDone', false) ? null : { step: 0, t: 0 };
+      this.tutorial = store.get('tutDone-' + this.side, false) ? null : { step: 0, t: 0 };
       this.startTutorial();
     },
 
@@ -168,6 +172,14 @@
         if (!r.ok) this.hud.alert('השופר עוד לא מוכן', 'info', 'shofar', 'shofarNo');
         return;
       }
+      if (k === 'megaphone') {
+        const Mg = w.BAL.police.megaphone;
+        if (w.megaCD > 0 || w.t < Mg.firstAt) { this.hud.alert('הכריזה עוד לא מוכנה', 'info', 'megaphone', 'megaNo'); return; }
+        this.input.aimMega = !this.input.aimMega;
+        HM.Audio.click();
+        if (this.tutorial && this.tutorial.step === 3 && this.side === 'police') this.setTut(4);
+        return;
+      }
       const r = w.cmd(this.side, { type: 'buy', unit: k });
       if (r.ok) {
         HM.Audio.chime(true);
@@ -185,7 +197,12 @@
     },
     setTut(step) {
       this.tutorial.step = step;
-      const S = [
+      const S = this.side === 'police' ? [
+        'שלב 1 מתוך 4: לחצו על השלט הכחול של חוליית שוטרים כדי לבחור אותה',
+        'שלב 2 מתוך 4: כשהמפגינים יוצאים לכביש — לחצו על אחת החוליות שלהם. השוטרים יגררו אותם לניידת',
+        'שלב 3 מתוך 4: מפגינים שעומדים? פרשים (X) מפזרים אותם. יושבים? רק שוטרים או מכת"זית (C)',
+        'שלב 4 מתוך 4: הכריזה (V) מורידה מורל לכל מי שבאזור. ניידת מלאה = 10 מפגינים יוצאים מהמשחק'
+      ] : [
         'שלב 1 מתוך 4: לחצו על השלט הצהוב של אחת החוליות כדי לבחור אותה',
         'שלב 2 מתוך 4: עכשיו לחצו על הכביש — החוליה תיפרס לרוחבו. האדום מראה אילו נתיבים ייחסמו',
         'שלב 3 מתוך 4: לחצו "לשבת על הכביש" (או S) — כך קשה יותר לפנות אתכם',
@@ -193,18 +210,24 @@
       ];
       this.tutorialHint = S[step] || null;
       $('hint').textContent = this.tutorialHint || '';
-      if (step >= S.length) { this.tutorial = null; store.set('tutDone', true); }
+      if (step === 3 || (this.side === 'police' && step === 2)) this.tutorial.t = 14;
+      if (step >= S.length) { this.tutorial = null; store.set('tutDone-' + this.side, true); }
     },
     onSelect() { if (this.tutorial && this.tutorial.step === 0) this.setTut(1); },
     onCommand(kind, d) {
       if (!this.tutorial) return;
+      if (this.side === 'police') {
+        if (this.tutorial.step === 1 && kind === 'target') this.setTut(2);
+        return;
+      }
       if (this.tutorial.step === 1 && kind === 'move' && d.onRoad) this.setTut(2);
-      else if (this.tutorial.step === 2 && kind === 'stance' && d.st === 'sit') { this.setTut(3); this.tutorial.t = 12; }
+      else if (this.tutorial.step === 2 && kind === 'stance' && d.st === 'sit') this.setTut(3);
     },
-    onBuy() { if (this.tutorial && this.tutorial.step === 3) this.setTut(4); },
+    onBuy() { if (this.tutorial && this.tutorial.step >= 2 && this.tutorial.step <= 3) this.setTut(this.tutorial.step + 1); },
     tickTutorial(dt) {
       if (!this.tutorial) return;
-      if (this.tutorial.step === 3) { this.tutorial.t -= dt; if (this.tutorial.t <= 0) this.setTut(4); }
+      const st = this.tutorial.step;
+      if ((st === 3) || (this.side === 'police' && st === 2)) { this.tutorial.t -= dt; if (this.tutorial.t <= 0) this.setTut(st + 1); }
     },
 
     // ---------- סיום ----------
@@ -220,7 +243,14 @@
       for (let i = 0; i < 3; i++) st += i < (win ? o.stars : 0) ? '★' : '<span class="off">★</span>';
       $('endStars').innerHTML = st;
       const S = w.stats;
-      const cells = [
+      const cells = this.side === 'police' ? [
+        [Math.floor(w.Hpeak), 'שיא מד הכותרות'],
+        [w.stats.jamPeak.toFixed(1), 'שיא הפקק (ק"מ)'],
+        [U.fmtTime(w.t), 'משך המבצע'],
+        [S.dragged, 'פינויים'],
+        [S.removed, 'נלקחו לתחנה'],
+        [S.scandals, 'שערוריות בחדשות']
+      ] : [
         [w.stats.jamPeak.toFixed(1), 'שיא הפקק (ק"מ)'],
         [Math.floor(w.Hpeak), 'שיא מד הכותרות'],
         [U.fmtTime(w.t), 'משך ההפגנה'],

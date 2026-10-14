@@ -58,6 +58,7 @@ button { font-family: inherit; cursor: pointer; }
 .startSum { text-align: center; font-size: 14px; color: var(--ink2); }
 .menuLinks { display: flex; justify-content: center; gap: 22px; margin-top: 12px; }
 .link { background: none; border: none; color: var(--ink); font-size: 16px; text-decoration: underline; text-underline-offset: 4px; }
+.howSide { font-family: 'Frank Ruhl Libre', serif; font-weight: 900; font-size: 20px; margin: 12px 0 6px; border-bottom: 1px solid rgba(0,0,0,0.2); }
 .howGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .howCard { background: var(--paper2); border-radius: 8px; padding: 12px 14px; position: relative; }
 .howCard b { font-size: 17px; }
@@ -89,6 +90,10 @@ button { font-family: inherit; cursor: pointer; }
 #topbar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: stretch; gap: 10px; }
 #moneyBox { padding: 7px 14px; min-width: 140px; }
 #moneyBox .big { color: #ffe08a; }
+.vanLine { margin-top: 4px; font-size: 12px; font-weight: 700; color: #cfe0ff; display: flex; align-items: center; gap: 5px; }
+.vanLine .bar { flex: 1; height: 5px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; min-width: 40px; }
+.vanLine .bar b { display: block; height: 100%; background: #6ea2ff; }
+.vanLine.away { color: #ffb38a; }
 #meterBox { flex: 1; max-width: 560px; margin: 0 auto; padding: 7px 16px 6px; }
 .meterHead { display: flex; align-items: baseline; gap: 10px; }
 .meterHead .lbl { font-family: 'Frank Ruhl Libre', serif; font-size: 18px; color: var(--txt); }

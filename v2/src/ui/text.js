@@ -19,6 +19,7 @@
     van: '<svg viewBox="0 0 32 32" class="ic"><rect x="3" y="11" width="26" height="13" rx="2" fill="#f1f2f4"/><rect x="3" y="18" width="26" height="2.6" fill="#1f3a6e"/><rect x="5" y="13" width="15" height="4" fill="#2a3440"/><circle cx="9" cy="25" r="2.6" fill="#151515"/><circle cx="23" cy="25" r="2.6" fill="#151515"/><rect x="12" y="8.5" width="4" height="2.5" fill="#3a73d6"/><rect x="16" y="8.5" width="4" height="2.5" fill="#d63a3a"/></svg>',
     car: '<svg viewBox="0 0 32 32" class="ic"><path d="M5 20 L8 13 Q9 11 11 11 H21 Q23 11 24 13 L27 20 V25 H5z" fill="#f2efe6"/><rect x="10" y="13" width="12" height="5" rx="1" fill="#26313d"/><circle cx="10" cy="25" r="2.6" fill="#151515"/><circle cx="22" cy="25" r="2.6" fill="#151515"/></svg>',
     sun: '<svg viewBox="0 0 32 32" class="ic"><circle cx="16" cy="18" r="7" fill="#ffc35a"/><path d="M2 24 H30" stroke="#d58a3a" stroke-width="2.4"/></svg>',
+    megaphone: '<svg viewBox="0 0 32 32" class="ic"><path d="M5 13 H10 L22 6 V26 L10 19 H5z" fill="#e8eef8" stroke="#2c4f86" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 19 L10 26 H13 L12 19" fill="#2c4f86"/><path d="M25 11 Q28 16 25 21 M27.5 8.5 Q32 16 27.5 23.5" stroke="#ffd36b" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
     flag: '<svg viewBox="0 0 32 32" class="ic"><path d="M8 4 V29" stroke="#ddd" stroke-width="2.2"/><path d="M9 5 H25 L21 10 L25 15 H9z" fill="#4cc46c"/></svg>'
   };
 
@@ -29,7 +30,14 @@
     shofar: { name: 'שופר', short: 'כולם מתעוררים', explain: 'מורל מלא לכל ההפגנה, מי שברח חוזר מיד, ושוטרים קרובים קופאים לרגע. פעם בדקה וחצי.' },
     patrol: { name: 'שוטרים', short: 'גוררים לניידת', explain: 'גוררים מפגינים לניידת העצורים, אחד-אחד.' },
     horses: { name: 'פרשים', short: 'מפזרים עומדים', explain: 'שועטים לחוליה עומדת ומפזרים אותה. מול יושבים — עוצרים, וזה מגיע לחדשות.' },
-    cannon: { name: 'מכת"זית', short: 'מים על כולם', explain: 'מרימה גם יושבים ומבריחה אותם. המיכל מתרוקן מהר וצריך לחזור למלא.' }
+    cannon: { name: 'מכת"זית', short: 'מים על כולם', explain: 'מרימה גם יושבים ומבריחה אותם. המיכל מתרוקן מהר וצריך לחזור למלא.' },
+    megaphone: { name: 'כריזה', short: 'מורידה מורל', explain: '"ההתקהלות אינה חוקית!" — מורידה מורל לכל המפגינים באזור. עומדים עם מורל נמוך בורחים. פעם ב-40 שניות.' }
+  };
+  // הסברים לשחקן משטרה (בלוח החוליה)
+  const POLICE_HELP = {
+    patrol: 'לחצו על חוליית מפגינים — השוטרים יגררו אותם לניידת. שוטרים במנוחה עוצרים לבד מפגינים שחוסמים בטווח 12 מטר.',
+    horses: 'לחצו על חוליה שעומדת — הפרשים יפזרו אותה. מול חוליה שיושבת הם עוצרים, וזו שערורייה בחדשות.',
+    cannon: 'לחצו על חוליה — המכת"זית תיסע ותתיז עליה, גם על יושבים. המיכל מספיק ל-18 שניות של התזה.'
   };
 
   const STATE = {
@@ -73,6 +81,8 @@
     vanDeparted: 'ניידת עם {n} עצורים יצאה לתחנה',
     cannonEmpty: 'המכת"זית התרוקנה וחוזרת למלא מים',
     shofar: 'תקיעת שופר בצומת — ההפגנה מתעוררת',
+    megaphone: 'המשטרה בכריזה: "ההתקהלות אינה חוקית"',
+    wave: 'גל מפגינים חדש יוצא מהישיבה',
     policeArrive: 'תגבורת משטרה מגיעה לצומת',
     start: 'צפי: הפגנה ב{place} אחר הצהריים'
   };
@@ -82,11 +92,16 @@
       headlines: { title: 'ההפגנה בכותרות!', sub: 'פקק של {km} ק"מ ב{place}. כל הערוצים שידרו בשידור חי.' },
       sunset: { title: 'השמש שקעה — הכותרות הלכו לסיפור אחר', sub: 'הגעתם ל-{H} מתוך 100 במד הכותרות. כמעט.' },
       dispersed: { title: 'ההפגנה התפזרה', sub: 'אף מפגין לא נשאר ברחוב, והצומת חזר לזרום.' }
+    },
+    police: {
+      headlines: { title: 'ההפגנה בכותרות — והשר מתקשר', sub: 'פקק של {km} ק"מ ב{place}. מחר בבוקר תהיה ישיבה לא נעימה.' },
+      sunset: { title: 'השמש שקעה — הצומת נפתח בזמן', sub: 'מד הכותרות נעצר ב-{H}. המהדורה פתחה בתחזית מזג האוויר.' },
+      dispersed: { title: 'ההפגנה התפזרה — הצומת זורם', sub: 'לא נשארו מפגינים ברחוב. התנועה חזרה לזרום לפני השקיעה.' }
     }
   };
 
   function fmt(s, vars) { return s.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined) ? vars[k] : m); }
 
   HM.ICONS = ICONS;
-  HM.TXT = { UNITS, STATE, LINES, NEWS, END, pick, fmt };
+  HM.TXT = { UNITS, STATE, LINES, NEWS, END, POLICE_HELP, pick, fmt };
 })(typeof window !== 'undefined' ? window : globalThis);

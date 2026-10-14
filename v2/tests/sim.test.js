@@ -143,7 +143,7 @@ test('water cannon makes a sitting squad flee', () => {
   let fled = false;
   run(w, 40, () => { if (sitters.fleeT > 0) fled = true; });
   assert.ok(fled, 'soaked squad fled');
-  assert.ok(c.vehicle.tank < HM.BAL.police.cannon.tank);
+  assert.ok(w.stats.soaked >= 1, 'soak counted');
 });
 
 test('askan permit stalls a nearby patrol; shofar has a cooldown', () => {
@@ -212,4 +212,63 @@ test('a full AI vs AI game ends with a winner and no stuck state', () => {
     assert.ok(Number.isFinite(p.x) && Number.isFinite(p.z), 'finite positions');
     assert.ok(!w.map.inBuilding(p.x, p.z, -0.25), 'nobody inside a building');
   }
+});
+
+// ---------------- צד המשטרה ----------------
+test('police mode: human police starts with patrols and AI protesters have a finite turnout', () => {
+  const w = new HM.World({ seed: 3, protest: 'ai', police: 'human', difficulty: 'easy' });
+  assert.strictEqual(w.squads.filter(s => s.side === 'police').length, HM.BAL.police.humanStart.length);
+  assert.ok(w.ai.protest && !w.ai.police);
+  assert.ok(w.ai.protest.hasMore());
+  w.ai.protest.bought = w.ai.protest.cfg.turnout;
+  assert.ok(!w.ai.protest.hasMore());
+});
+
+test('idle patrols auto-engage blockers nearby, but not far away', () => {
+  const w = newWorld();
+  const pol = U.makeSquad(w, 'police', 'patrol', 20, -9);
+  U.setGoal(w, pol, 20, -9); pol.guard = { x: 20, z: -9 };
+  const near = placeSquad(w, 'protest', 'bochurim', 20, 0, false);
+  const far = placeSquad(w, 'protest', 'bochurim', -60, 0, false);
+  run(w, 3);
+  assert.strictEqual(pol.target, near.id);
+  assert.ok(pol.auto);
+  assert.notStrictEqual(pol.target, far.id);
+});
+
+test('after clearing, police step off the road', () => {
+  const w = newWorld();
+  const pol = U.makeSquad(w, 'police', 'patrol', 0, 0);
+  U.setGoal(w, pol, 0, 0); pol.guard = { x: 0, z: 0 };
+  U.returnToGuard(w, pol);
+  assert.ok(!w.map.isRoad(pol.goal.x, pol.goal.z), 'goal moved to sidewalk');
+});
+
+test('megaphone hurts morale in range and has a cooldown', () => {
+  const w = newWorld();
+  const sq = placeSquad(w, 'protest', 'bochurim', 0, 30, false);
+  sq.morale = 50;
+  run(w, HM.BAL.police.megaphone.firstAt + 0.1);
+  const before = sq.morale;
+  const r = w.cmd('police', { type: 'megaphone', x: 0, z: 30 });
+  assert.ok(r.ok && r.n === 1);
+  assert.ok(Math.abs(before - sq.morale - HM.BAL.police.megaphone.morale) < 0.5, before + ' -> ' + sq.morale);
+  assert.ok(!w.cmd('police', { type: 'megaphone', x: 0, z: 30 }).ok);
+});
+
+test('police standing on an empty road do not raise the headline meter', () => {
+  const w = newWorld();
+  const pol = U.makeSquad(w, 'police', 'patrol', -20, 0);
+  U.setGoal(w, pol, -20, 0, 'z');
+  run(w, 90);
+  assert.ok(w.traffic.jamKm < 0.1, 'jam ' + w.traffic.jamKm);
+  assert.strictEqual(Math.round(w.H), 0);
+});
+
+test('police can win by dispersal when the protest runs out of people', () => {
+  const w = new HM.World({ seed: 11, protest: 'ai', police: 'human', difficulty: 'easy' });
+  w.ai.protest.bought = w.ai.protest.cfg.turnout;   // אף אחד כבר לא יגיע
+  for (const p of w.people) if (p.side === 'protest') p.state = 'gone';
+  run(w, HM.BAL.end.emptyStreetT + 2);
+  assert.ok(w.outcome && w.outcome.winner === 'police' && w.outcome.reason === 'dispersed', JSON.stringify(w.outcome));
 });

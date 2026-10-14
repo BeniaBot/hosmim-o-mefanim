@@ -30,7 +30,7 @@
       <div class="pickLbl">באיזה צד אתם?</div>
       <div class="seg" id="sideSeg">
         <button class="segBtn active" data-side="protest"><b>מארגני ההפגנה</b><span>חוסמים את הצומת ומביאים אותה לכותרות</span></button>
-        <button class="segBtn" data-side="police" disabled title="בבנייה — יגיע בשלב הבא"><b>מפקד המשטרה</b><span>בקרוב</span></button>
+        <button class="segBtn" data-side="police"><b>מפקד המשטרה</b><span>שומרים על הצומת פתוח עד השקיעה</span></button>
       </div>
     </div>
     <div class="pickRow">
@@ -65,11 +65,19 @@
   <div class="paper">
     <div class="masthead mid">איך משחקים</div>
     <div class="rule"></div>
+    <div class="howSide">כמארגני ההפגנה</div>
     <div class="howGrid">
       <div class="howCard"><div class="howNum">1</div><b>המטרה</b><p>כל עוד יש פקק, <b>מד הכותרות</b> עולה. הגעתם ל-100 לפני השקיעה — ניצחתם.</p></div>
       <div class="howCard"><div class="howNum">2</div><b>לבחור ולשלוח</b><p>לחיצה על חוליה בוחרת אותה. לחיצה על הכביש שולחת אותה לשם — והיא נפרסת בשורה לרוחב הכביש.</p></div>
       <div class="howCard"><div class="howNum">3</div><b>לשבת</b><p>חוליה שיושבת קשה יותר לגרור, והפרשים לא מתקרבים אליה. אבל המכת"זית מרימה גם יושבים.</p></div>
       <div class="howCard"><div class="howNum">4</div><b>תגבורת</b><p>הכסף נכנס מתרומות — וככל שהמד גבוה, נכנס יותר. מזמינים חוליות מהלוח בפינה.</p></div>
+    </div>
+    <div class="howSide">כמפקד המשטרה</div>
+    <div class="howGrid">
+      <div class="howCard"><div class="howNum">1</div><b>המטרה</b><p>להחזיק את <b>מד הכותרות</b> מתחת ל-100 עד השקיעה. כל פקק מעלה אותו.</p></div>
+      <div class="howCard"><div class="howNum">2</div><b>לפנות</b><p>בוחרים חוליית שוטרים ולוחצים על חוליית מפגינים — הם נגררים לניידת. שוטרים במנוחה עוצרים לבד מי שחוסם לידם.</p></div>
+      <div class="howCard"><div class="howNum">3</div><b>הכלי הנכון</b><p>פרשים מפזרים חוליות שעומדות. מול יושבים — רק שוטרים או מכת"זית. פרשים מול יושבים = שערורייה בחדשות.</p></div>
+      <div class="howCard"><div class="howNum">4</div><b>הניידת</b><p>ניידת מלאה (10) נוסעת לתחנה והעצורים יוצאים מהמשחק. מי שנשאר בה 45 שניות — משתחרר וחוזר.</p></div>
     </div>
     <table class="keys">
       <tr><td>עכבר שמאלי</td><td>בחירה · גרירה = בחירת כמה חוליות · לחיצה על הכביש = שליחה</td></tr>
@@ -79,7 +87,8 @@
       <tr><td>1–9</td><td>בחירת חוליה לפי המספר שלה</td></tr>
       <tr><td>S</td><td>לשבת / לקום</td></tr>
       <tr><td>F</td><td>"יש לי אישור!" (עסקן)</td></tr>
-      <tr><td>Z X C · V</td><td>הזמנת בחורים · אברכים · עסקן · שופר</td></tr>
+      <tr><td>Z X C · V</td><td>מפגינים: בחורים · אברכים · עסקן · שופר &nbsp;|&nbsp; משטרה: שוטרים · פרשים · מכת"זית · כריזה</td></tr>
+      <tr><td>R · B</td><td>משטרה: מכת"זית חוזרת למלא מים · חוליה יורדת למדרכה</td></tr>
       <tr><td>רווח / P / Esc</td><td>הפסקה</td></tr>
     </table>
     <button class="bigBtn" id="btnHowBack">הבנתי</button>
@@ -111,6 +120,7 @@
       <div class="lbl" id="moneyLbl">קופת ההפגנה</div>
       <div class="big"><span id="money">0</span> <small>₪</small></div>
       <div class="sub" id="income">+0 לשנייה</div>
+      <div class="vanLine" id="vanLine" title="ניידת העצורים: כשהיא מתמלאת, כל העצורים יוצאים מהמשחק. עצור שנשאר בה 45 שניות — משתחרר וחוזר."></div>
     </div>
     <div class="panel" id="meterBox">
       <div class="meterHead"><span class="lbl">מד הכותרות</span><span id="meterVal">0</span><span id="meterRate"></span></div>
@@ -119,7 +129,7 @@
     </div>
     <div class="panel" id="sunBox" title="כשהשמש שוקעת — ההפגנה נגמרת.">
       <svg viewBox="0 0 120 54" id="sunSvg"><path d="M8 50 A52 52 0 0 1 112 50" class="arc"/><line x1="2" y1="50" x2="118" y2="50" class="hz"/><circle id="sunDot" cx="20" cy="30" r="7"/></svg>
-      <div><div class="lbl">שקיעה בעוד</div><div class="big" id="sunTime">8:00</div></div>
+      <div><div class="lbl" id="sunLbl">שקיעה בעוד</div><div class="big" id="sunTime">8:00</div><div class="sub" id="sunSub"></div></div>
     </div>
     <div id="ctrlBox">
       <button class="iconBtn" id="btnPause" title="הפסקה (רווח)">❚❚</button>

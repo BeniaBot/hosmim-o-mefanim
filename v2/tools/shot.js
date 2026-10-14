@@ -61,6 +61,23 @@ const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
     await p.waitForTimeout(800);
     await p.screenshot({ path: OUT + '/close-3.png' });
   }
+  if (scenario === 'police') {
+    await p.click('#sideSeg .segBtn[data-side="police"]');
+    await p.click('#btnStart');
+    await p.waitForTimeout(1000);
+    await p.evaluate(() => { const w = HM.Game.world; w.ai.police = new HM.PoliceAI(w, 'human'); });
+    let k = 0;
+    for (;;) {
+      await ff(45);
+      await p.waitForTimeout(400);
+      await p.screenshot({ path: OUT + `/police-${String(k++).padStart(2, '0')}.png` });
+      const st = await p.evaluate(() => { const w = HM.Game.world; return { t: w.t | 0, H: w.H.toFixed(1), jam: w.traffic.jamKm.toFixed(2), out: w.outcome, prot: w.protestersOnStreet(), left: w.ai.protest.cfg.turnout - w.ai.protest.bought }; });
+      console.log(JSON.stringify(st));
+      if (st.out || k > 14) break;
+    }
+    await p.waitForTimeout(2500);
+    await p.screenshot({ path: OUT + '/police-end.png' });
+  }
   if (scenario === 'full' || scenario === 'idle') {
     await p.click('#btnStart');
     await p.waitForTimeout(1200);

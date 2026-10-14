@@ -555,10 +555,39 @@
       this.markerT = 0;
     }
 
-    showMarker(x, z, color) {
+    showMarker(x, z, color, radius) {
+      if (radius) {
+        // גל דק שמתרחב לרדיוס (כריזה)
+        if (!this.pulse) {
+          const g = new T.RingGeometry(0.96, 1.0, 72); g.rotateX(-Math.PI / 2);
+          this.pulse = new T.Mesh(g, this.mat(new T.MeshBasicMaterial({ color: 0x6ea2ff, transparent: true, opacity: 0, depthWrite: false })));
+          this.pulse.renderOrder = 3;
+          this.root.add(this.pulse);
+        }
+        this.pulse.position.set(x, 0.2, z);
+        this.pulse.material.color.setHex(color || 0x6ea2ff);
+        this.pulseT = 1; this.pulseR = radius;
+        return;
+      }
       this.marker.position.set(x, this.groundY(x, z) + 0.05, z);
       this.marker.material.color.setHex(color || 0x5ee37a);
       this.markerT = 1;
+      this.markerR = 1;
+    }
+    // עיגול כיוון (כריזה)
+    setAim(p, r) {
+      if (!this.aim) {
+        const g = new T.RingGeometry(0.97, 1.0, 64); g.rotateX(-Math.PI / 2);
+        this.aim = new T.Mesh(g, this.mat(new T.MeshBasicMaterial({ color: 0x6ea2ff, transparent: true, opacity: 0.9, depthWrite: false })));
+        const g2 = new T.CircleGeometry(1, 48); g2.rotateX(-Math.PI / 2);
+        this.aimFill = new T.Mesh(g2, this.mat(new T.MeshBasicMaterial({ color: 0x6ea2ff, transparent: true, opacity: 0.12, depthWrite: false })));
+        this.aim.renderOrder = 3; this.aimFill.renderOrder = 2;
+        this.root.add(this.aim); this.root.add(this.aimFill);
+      }
+      const on = !!p;
+      this.aim.visible = this.aimFill.visible = on;
+      if (!on) return;
+      for (const m of [this.aim, this.aimFill]) { m.position.set(p.x, 0.2, p.z); m.scale.set(r, 1, r); }
     }
 
     // ---------- עדכון לפריים ----------
@@ -737,8 +766,15 @@
       if (this.markerT > 0) {
         this.markerT = Math.max(0, this.markerT - dtReal * 1.6);
         this.marker.material.opacity = this.markerT * 0.9;
-        const s = 1 + (1 - this.markerT) * 0.8;
+        const s = (1 + (1 - this.markerT) * 0.8) * (this.markerR || 1);
         this.marker.scale.set(s, 1, s);
+      }
+
+      if (this.pulseT > 0) {
+        this.pulseT = Math.max(0, this.pulseT - dtReal * 1.2);
+        const k = (1 - this.pulseT * this.pulseT) * this.pulseR;
+        this.pulse.scale.set(Math.max(0.1, k), 1, Math.max(0.1, k));
+        this.pulse.material.opacity = this.pulseT * 0.9;
       }
 
       // ---- שקיעה: חלונות ופנסים ----

@@ -114,11 +114,21 @@
         if (d.moved) this.boxSelect(d.x0, d.y0, e.clientX, e.clientY, d.shift);
         else this.click(e.clientX, e.clientY, d.shift);
       } else if (d.kind === 'pan' && !d.moved) {
+        if (this.aimMega) { this.aimMega = false; return; }
         this.command(e.clientX, e.clientY);
       }
     }
 
     click(sx, sy, additive) {
+      if (this.aimMega) {
+        const gp = this.groundAt(sx, sy);
+        this.aimMega = false;
+        if (gp) {
+          const r = this.w.cmd('police', { type: 'megaphone', x: gp.x, z: gp.z });
+          if (r.ok) this.g.view.showMarker(gp.x, gp.z, 0x6ea2ff, this.w.BAL.police.megaphone.range);
+        }
+        return;
+      }
       const own = this.pickSquad(sx, sy, this.side);
       if (own) { this.selectClick(own, additive); return; }
       if (this.selected.size) { this.command(sx, sy); return; }
@@ -131,6 +141,13 @@
       HM.Audio.init();
       const sq = this.w.squadById(id);
       if (!sq) return;
+      if (this.aimMega) {
+        const c = HM.Units.centroid(sq);
+        this.aimMega = false;
+        const r = this.w.cmd('police', { type: 'megaphone', x: c.x, z: c.z });
+        if (r.ok) this.g.view.showMarker(c.x, c.z, 0x6ea2ff, this.w.BAL.police.megaphone.range);
+        return;
+      }
       if (sq.side === this.side) {
         if (e.button === 2 && this.selected.size) { this.commandAt(HM.Units.centroid(sq).x, HM.Units.centroid(sq).z); return; }
         this.selectClick(sq, e.shiftKey || e.ctrlKey);
@@ -208,7 +225,13 @@
       const sqs = this.selectedSquads();
       if (!sqs.length) return;
       if (this.side === 'police') {
-        this.w.cmd('police', { type: 'target', squads: sqs.map(s => s.id), target: enemy.id });
+        const r = this.w.cmd('police', { type: 'target', squads: sqs.map(s => s.id), target: enemy.id });
+        if (r.ok) {
+          HM.Audio.click();
+          const c = HM.Units.centroid(enemy);
+          this.g.view.showMarker(c.x, c.z, 0xff5a4a);
+          this.g.onCommand && this.g.onCommand('target', { target: enemy.id });
+        } else this.g.hud.alert('החוליות שנבחרו לא יכולות לטפל במטרה הזו כרגע', 'info', null, 'tgtfail');
       } else {
         const c = HM.Units.centroid(enemy);
         this.commandAt(c.x, c.z);
@@ -246,6 +269,24 @@
       }
     }
 
+    refill() {
+      if (!this.active() || this.side !== 'police') return;
+      const ids = this.selectedSquads().filter(s => s.vehicle).map(s => s.id);
+      if (!ids.length) { this.g.hud.alert('בחרו קודם את המכת"זית', 'info', 'cannon', 'selcannon'); return; }
+      this.w.cmd('police', { type: 'refill', squads: ids });
+      HM.Audio.click();
+    }
+    toSidewalk() {
+      if (!this.active() || this.side !== 'police') return;
+      const sqs = this.selectedSquads().filter(s => !s.vehicle);
+      for (const s of sqs) {
+        const c = HM.Units.centroid(s);
+        const p = this.w.map.nearestSidewalk(c.x, c.z);
+        this.w.cmd('police', { type: 'move', squads: [s.id], x: p.x, z: p.z });
+      }
+      if (sqs.length) HM.Audio.click();
+    }
+
     // ---------- מקלדת ----------
     keyDown(e) {
       const g = this.g;
@@ -254,6 +295,7 @@
       if (g.mode === 'menu' || g.mode === 'end') return;
       if (e.code === 'Space' || e.code === 'KeyP' || e.code === 'Escape') {
         e.preventDefault();
+        if (e.code === 'Escape' && this.aimMega && g.mode === 'play') { this.aimMega = false; return; }
         if (e.code === 'Escape' && this.selected.size && g.mode === 'play') { this.selected.clear(); g.hud.updateSelection(true); return; }
         g.togglePause();
         return;
@@ -273,6 +315,14 @@
         for (const s of this.w.squads) if (s.side === this.side && !s.broken && (s.members.length || s.vehicle)) this.selected.add(s.id);
         g.hud.updateSelection(true);
         return;
+      }
+      if (this.side === 'police') {
+        if (e.code === 'KeyZ') { g.useCard('patrol'); return; }
+        if (e.code === 'KeyX') { g.useCard('horses'); return; }
+        if (e.code === 'KeyC') { g.useCard('cannon'); return; }
+        if (e.code === 'KeyV') { g.useCard('megaphone'); return; }
+        if (e.code === 'KeyR') { this.refill(); return; }
+        if (e.code === 'KeyB') { this.toSidewalk(); return; }
       }
       if (this.side === 'protest') {
         if (e.code === 'KeyS' && this.selected.size) { this.toggleStance(); return; }
@@ -355,7 +405,11 @@
       }
       // מטרות מסומנות (לשחקן משטרה) — בהמשך
       this.targetSet.clear();
-      if (this.side === 'police') for (const sq of this.selectedSquads()) if (sq.target) this.targetSet.add(sq.target);
+      if (this.side === 'police') {
+        for (const sq of this.selectedSquads()) if (sq.target) this.targetSet.add(sq.target);
+        if (this.hoverEnemy && this.selected.size) this.targetSet.add(this.hoverEnemy);
+      }
+      this.hoverEnemy = null;
       this.updatePreview();
     }
 
@@ -364,6 +418,18 @@
       const g = this.g, view = g.view;
       if (!view) return;
       const hintEl = $('hint');
+      if (this.aimMega && g.mode === 'play') {
+        const gp = this.mouse.inside ? this.groundAt(this.mouse.x, this.mouse.y) : null;
+        view.setPreview(null, null);
+        view.setAim(gp, this.w.BAL.police.megaphone.range);
+        hintEl.textContent = 'כריזה: לחצו על המקום (כל מי שבתוך העיגול יושפע) · Esc לביטול';
+        return;
+      }
+      view.setAim(null);
+      if (g.mode === 'play' && this.side === 'police' && this.selected.size && !this.drag && this.mouse.inside) {
+        this.policeHover(hintEl);
+        return;
+      }
       if (g.mode !== 'play' || !this.selected.size || this.drag || !this.mouse.inside) {
         view.setPreview(null, null);
         if (g.mode === 'play' && !this.g.tutorialHint) hintEl.textContent = '';
@@ -403,6 +469,33 @@
       }
     }
   }
+
+  // רמזים לשחקן משטרה: על מה הלחיצה תשפיע
+  Input.prototype.policeHover = function (hintEl) {
+    const view = this.g.view, w = this.w;
+    view.setPreview(null, null);
+    const sqs = this.selectedSquads();
+    if (!sqs.length) return;
+    if (this.pickSquad(this.mouse.x, this.mouse.y, 'police')) { if (!this.g.tutorialHint) hintEl.textContent = 'לחיצה: בחירת החוליה הזו'; return; }
+    const enemy = this.pickSquad(this.mouse.x, this.mouse.y, 'protest');
+    this.hoverEnemy = enemy ? enemy.id : null;
+    if (this.g.tutorialHint) { hintEl.textContent = this.g.tutorialHint; return; }
+    if (enemy) {
+      const sitting = HM.Units.squadSitting(enemy);
+      const types = new Set(sqs.map(s => s.type));
+      const parts = [];
+      if (types.has('patrol')) parts.push(sitting ? 'השוטרים יגררו אותם (יושבים — לאט)' : 'השוטרים יגררו אותם לניידת');
+      if (types.has('horses')) parts.push(sitting ? 'זהירות: הם יושבים — הפרשים ייעצרו וזו שערורייה!' : 'הפרשים יפזרו אותם');
+      if (types.has('cannon')) parts.push('המכת"זית תתיז עליהם');
+      hintEl.textContent = 'לחיצה: ' + parts.join(' · ');
+      return;
+    }
+    const gp = this.groundAt(this.mouse.x, this.mouse.y);
+    if (!gp) return;
+    hintEl.textContent = w.map.isRoad(gp.x, gp.z)
+      ? 'לחיצה: להציב כאן — אבל שוטרים על הכביש עוצרים גם הם את התנועה!'
+      : `לחיצה: להציב כאן. שוטרים במנוחה עוצרים לבד מפגינים שחוסמים בטווח ${w.BAL.police.autoEngage} מטר`;
+  };
 
   HM.Input = Input;
 })(typeof window !== 'undefined' ? window : globalThis);

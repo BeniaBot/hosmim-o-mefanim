@@ -720,6 +720,11 @@
       case 'ready':
       case 'idle':
         V.v = 0;
+        // מכת"זית שעומדת בלי משימה על הכביש — חוזרת לתחנה (ולא חוסמת את התנועה)
+        if (!sq.target && world.map.isRoad(V.x, V.z)) {
+          V.idleT = (V.idleT || 0) + dt;
+          if (V.idleT > 6) { V.idleT = 0; vehicleGo(world, sq, base.x, base.z); V.state = 'return'; }
+        } else V.idleT = 0;
         if (sq.target) {
           const tgt = world.squadById(sq.target);
           if (tgt && tgt.members.length && !tgt.broken) { V.fire = cannonFirePoint(world, sq, tgt); vehicleGo(world, sq, V.fire.x, V.fire.z); V.state = 'drive'; }

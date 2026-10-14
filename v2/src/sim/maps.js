@@ -207,7 +207,21 @@
         const d = (cx - x) * (cx - x) + (cz - z) * (cz - z);
         if (d < bd) { bd = d; best = { x: cx, z: cz }; }
       }
-      return best || { x, z };
+      if (best) return best;
+      // בפינות של צמתים אין מדרכה "ישרה" — מחפשים בטבעות
+      for (let r = 1.5; r <= 24; r += 1.5) {
+        let bp = null, bd2 = 1e9;
+        for (let k = 0; k < 24; k++) {
+          const a = k / 24 * Math.PI * 2;
+          const px = x + Math.cos(a) * r, pz = z + Math.sin(a) * r;
+          if (m.isRoad(px, pz) || m.inBuilding(px, pz, 0.8) || !m.inBounds(px, pz, 2)) continue;
+          // מעדיפים מדרכה אמיתית ולא חצר
+          const d = (px - x) * (px - x) + (pz - z) * (pz - z) + (m.isSidewalk(px, pz) ? 0 : 40);
+          if (d < bd2) { bd2 = d; bp = { x: px, z: pz }; }
+        }
+        if (bp) return bp;
+      }
+      return { x, z };
     };
     return m;
   }

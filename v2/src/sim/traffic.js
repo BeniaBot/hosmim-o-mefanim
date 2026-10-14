@@ -205,6 +205,7 @@
         car.d = nd;
         if (car.v < 0.4) car.stopT += dt; else car.stopT = Math.max(0, car.stopT - dt * 3);
         // נספר בפקק רק מי שעומד בגלל ההפגנה (אדם/כוח משטרה מקדימה, או רכב פקוק לפניו)
+        // משטרה שמפנה מפגינים — נחשב; משטרה שעומדת סתם על כביש ריק — לא
         car.jammed = car.stopT > this.B.jamStopT && (blockBy === 'car' || blockBy === 'protester' || blockBy === 'police');
         car.blockBy = blockBy;
         car.px = car.x; car.pz = car.z;

@@ -95,16 +95,27 @@
         if (p.state === 'detained' || p.state === 'gone' || p.state === 'carried') continue;
         // מי שעל הכביש, או ממש על שפתו (עלול להפריע לנתיב החיצוני)
         if (!this.map.isRoad(p.x, p.z) && !this.nearRoad(p.x, p.z, p.r + 0.2)) continue;
-        out.push({ x: p.x, z: p.z, r: p.r + 0.2, kind: p.side === 'protest' ? 'protester' : 'police', person: p.side === 'protest', ref: p });
+        const kind = p.side === 'protest' ? 'protester' : (this.nearProtest(p.x, p.z) ? 'police' : 'policeIdle');
+        out.push({ x: p.x, z: p.z, r: p.r + 0.2, kind, person: p.side === 'protest', ref: p });
       }
       for (const sq of this.squads) {
         if (!sq.vehicle) continue;
         const V = sq.vehicle;
+        const kind = this.nearProtest(V.x, V.z) ? 'police' : 'policeIdle';
         for (let k = -1; k <= 1; k++) {
-          out.push({ x: V.x + Math.sin(V.heading) * k * 2.6, z: V.z + Math.cos(V.heading) * k * 2.6, r: 1.6, kind: 'police', person: false, ref: null });
+          out.push({ x: V.x + Math.sin(V.heading) * k * 2.6, z: V.z + Math.cos(V.heading) * k * 2.6, r: 1.6, kind, person: false, ref: null });
         }
       }
       return out;
+    }
+    // כוח משטרה שעובד ליד מפגינים על הכביש — הפקק שהוא יוצר נחשב לפקק של ההפגנה.
+    // כוח שסתם עומד על כביש ריק — לא.
+    nearProtest(x, z) {
+      for (const q of this.neighbors(x, z, 15)) {
+        if (q.side !== 'protest') continue;
+        if ((q.state === 'free' || q.state === 'held' || q.state === 'carried') && this.map.isRoad(q.x, q.z)) return true;
+      }
+      return false;
     }
     // האם הנקודה בתוך גוף של מכונית (לאנשים: לא עוברים דרך רכבים)
     carAt(x, z, r) {
@@ -199,6 +210,21 @@
         case 'shofar':
           if (side !== 'protest') return { ok: false };
           return U2.useShofar(this);
+        case 'refill': {
+          let n = 0;
+          for (const id of c.squads || []) {
+            const s = this.squadById(id);
+            if (!s || !s.vehicle || s.side !== side) continue;
+            const V = s.vehicle;
+            if (V.state === 'return' || V.state === 'refill') continue;
+            s.target = null;
+            const b = this.map.bases.police;
+            U2.vehicleGo(this, s, b.x, b.z);
+            V.state = 'return';
+            n++;
+          }
+          return { ok: n > 0 };
+        }
         case 'megaphone': {
           if (side !== 'police') return { ok: false };
           const Mg = this.BAL.police.megaphone;
