@@ -1,0 +1,109 @@
+/* כל מספרי האיזון במקום אחד. שינוי כאן לא דורש לגעת בלוגיקה. */
+(function (root) {
+  'use strict';
+  const HM = root.HM || (root.HM = {});
+
+  HM.BAL = {
+    dt: 1 / 30,               // צעד סימולציה קבוע
+
+    // ----- מד הכותרות -----
+    headline: {
+      perKmSec: 0.45,         // כמה נקודות לשנייה לכל ק"מ פקק
+      deadzoneKm: 0.35,       // פקק "רגיל" של רמזור לא נחשב
+      decay: 0.35,            // ירידה לשנייה כשאין פקק
+      maxRate: 2.0,            // תקרה לשנייה (שלא ייגמר בפתאומיות)
+      horseOnSitters: 5,      // שערורייה: פרשים מול יושבים
+      askanArrest: 2,         // עצרו את העסקן
+      lostSquadPenalty: 0     // (שמור לעתיד)
+    },
+
+    // ----- כסף -----
+    money: {
+      protest: { start: 320, perSec: 3.6, perHeadline: 0.035 },
+      police:  { start: 250, perSec: 3.4, perHeadline: 0.08 }
+    },
+
+    // ----- תנועה -----
+    traffic: {
+      laneW: 3.5,
+      carGapSpawn: 7,         // מרווח מינימלי בנקודת הכניסה
+      idm: { a: 2.2, b: 3.5, s0: 2.2, T: 1.3, emergency: 9 },
+      rerouteBlocked: 0.0035, // נהגים שמוותרים ומחפשים דרך עוקפת (לשנייה, כשהנתיב חסום)
+      rerouteFree: 0.015,     // כשהתנועה זורמת — הפקק המדומה מתפרק מהר יותר
+      jamCarLen: 7.5,         // מטרים לכל רכב בפקק
+      jamStopT: 2.5,          // רכב שעומד יותר מזה — נספר בפקק
+      nearMissDecel: 7.5,     // בלימה חזקה מזה מול אדם = "כמעט"
+      lights: [               // מחזור רמזור: איזה ציר ירוק ולכמה זמן
+        { g: 'x', t: 24 }, { g: 'xy', t: 3 }, { g: null, t: 2 },
+        { g: 'z', t: 14 }, { g: 'zy', t: 3 }, { g: null, t: 2 }
+      ],
+      types: [
+        { id: 'sedan', len: 4.6, w: 1.85, p: 0.42 },
+        { id: 'hatch', len: 3.9, w: 1.75, p: 0.24 },
+        { id: 'van',   len: 5.2, w: 2.0,  p: 0.14 },
+        { id: 'taxi',  len: 4.7, w: 1.85, p: 0.10 },
+        { id: 'bus',   len: 12,  w: 2.55, p: 0.10, accel: 1.2 }
+      ]
+    },
+
+    // ----- אנשים -----
+    people: {
+      radius: 0.32,
+      sepDist: 0.75,
+      lineSpacing: 1.6,
+      sitTime: 1.4,           // זמן להתיישב / לקום
+      fleeTime: 3.6,
+      fleeDist: 15,
+      fleeSpeedMul: 1.5
+    },
+
+    // ----- יחידות המפגינים -----
+    protest: {
+      bochurim: { name: 'בחורי ישיבה', members: 5, speed: 3.3, cost: 110,
+                  grab: { stand: 2.6, sit: 4.5 }, copsSit: 1, morale: 85 },
+      avrechim: { name: 'אברכים', members: 4, speed: 2.25, cost: 150,
+                  grab: { stand: 3.4, sit: 7.0 }, copsSit: 2, morale: 95 },
+      askan:    { name: 'עסקן', members: 1, speed: 2.7, cost: 220, max: 2,
+                  grab: { stand: 4.0, sit: 4.0 }, copsSit: 1, morale: 100 },
+      permit:   { cooldown: 28, range: 10, stall: 9 },
+      aura:     { range: 9, morale: 2.0, grabMul: 1.35 },
+      shofar:   { cooldown: 90, firstAt: 40, morale: 45, stun: 3, stunRange: 14 },
+      morale: {
+        regen: 0.6, dragged: 7, horses: 32, water: 34, nearMiss: 8, askanArrested: 12,
+        lowWarn: 25
+      }
+    },
+
+    // ----- יחידות המשטרה -----
+    police: {
+      patrol:  { name: 'שוטרים', members: 4, speed: 3.1, cost: 230, dragSpeed: 1.25, max: 5 },
+      horses:  { name: 'פרשים', members: 3, speed: 6.5, cost: 330, max: 1,
+                 scatterR: 6.5, cooldown: 7, sitStop: 3.6 },
+      cannon:  { name: 'מכת"זית', cost: 560, max: 1, speed: 5, range: 17, halfAngle: 0.38,
+                 tank: 18, refill: 12, wetToFlee: 1.1 },
+      van:     { cap: 10, release: 45, away: 50 },
+      arrivalDelay: 7         // מרגע ההזמנה עד שהכוח יוצא מהבסיס
+    },
+
+    // ----- סיום -----
+    end: {
+      emptyStreetT: 30,       // אין אף מפגין ברחוב כל הזמן הזה = ההפגנה התפזרה
+      starsProtest: [180, 90],// זמן שנותר עד השקיעה ל-3 / 2 כוכבים
+      starsPolice: [50, 75]   // שיא המד ל-3 / 2 כוכבים
+    },
+
+    // ----- המפגינים הממוחשבים (בדיקות, ובהמשך יריב) -----
+    protestAI: {
+      normal: { think: 0.8, incomeMul: 1.0 },
+      easy:   { think: 1.5, incomeMul: 0.8 },
+      hard:   { think: 0.4, incomeMul: 1.2 }
+    },
+
+    // ----- המשטרה הממוחשבת (כשהשחקן מפגין) -----
+    policeAI: {
+      normal: { think: 0.5, patrolAt: 22, horsesAt: 85, cannonAt: 150, incomeMul: 1.3, maxPatrols: 4 },
+      easy:   { think: 1.0, patrolAt: 35, horsesAt: 130, cannonAt: 220, incomeMul: 0.95, maxPatrols: 3 },
+      hard:   { think: 0.4, patrolAt: 18, horsesAt: 70, cannonAt: 130, incomeMul: 1.55, maxPatrols: 5 }
+    }
+  };
+})(typeof window !== 'undefined' ? window : globalThis);

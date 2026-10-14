@@ -1,0 +1,215 @@
+// בדיקות הלוגיקה של המשחק. הרצה: node --test v2/tests/
+const test = require('node:test');
+const assert = require('node:assert');
+const HM = require('./load.js');
+const U = HM.Units;
+
+function run(w, sec, fn) {
+  const end = w.t + sec;
+  while (w.t < end && !w.outcome) { w.step(); if (fn) fn(w); w.events.drain(); }
+}
+function newWorld(opts) {
+  return new HM.World(Object.assign({ seed: 42, protest: 'human', police: 'human', empty: true }, opts || {}));
+}
+function placeSquad(w, side, type, x, z, sit) {
+  const sq = U.makeSquad(w, side, type, x, z);
+  U.setGoal(w, sq, x, z, undefined);
+  if (sit) sq.stance = 'sit';
+  return sq;
+}
+
+test('map: lanes, junction and arms are built', () => {
+  const m = HM.buildMap('barilan', HM.BAL);
+  assert.strictEqual(m.lanes.length, 6);
+  assert.strictEqual(m.junctions.length, 1);
+  assert.deepStrictEqual(Object.keys(m.arms).sort(), ['E', 'N', 'S', 'W']);
+  assert.ok(m.isRoad(0, 0) && m.isRoad(-50, 3) && !m.isRoad(-50, 9));
+  assert.ok(m.isSidewalk(-50, 9));
+  // נסיעה בצד ימין: מזרחה = צד דרומי
+  const east = m.lanes.find(l => l.axis === 'x' && l.dir > 0);
+  assert.ok(east.off > 0);
+});
+
+test('nav: path goes around buildings and stays walkable', () => {
+  const m = HM.buildMap('barilan', HM.BAL);
+  const nav = HM.buildNav(m);
+  // מחצר הישיבה אל מאחורי בניין הישיבה
+  const p = nav.foot.path(-25, -27, -25, -60);
+  assert.ok(p.length >= 2, 'needs a detour');
+  let prev = { x: -25, z: -27 };
+  for (const q of p) { assert.ok(nav.foot.los(prev.x, prev.z, q.x, q.z), 'segment clear'); prev = q; }
+});
+
+test('traffic: free flow has no overlaps and no jam', () => {
+  const w = newWorld();
+  run(w, 90);
+  for (const l of w.traffic.lanes) {
+    for (let i = 1; i < l.cars.length; i++) {
+      const gap = l.cars[i - 1].d - l.cars[i - 1].len - l.cars[i].d;
+      assert.ok(gap > -0.01, 'cars overlap');
+    }
+  }
+  assert.ok(w.traffic.jamKm < 0.2, 'no jam without protest, got ' + w.traffic.jamKm);
+  assert.ok(w.traffic.cars.length > 30);
+});
+
+test('blocking: a seated line across the west arm creates a jam and headlines', () => {
+  const w = newWorld();
+  placeSquad(w, 'protest', 'bochurim', -20, 0, true);
+  run(w, 120);
+  assert.ok(w.traffic.armJam.W > 0.25, 'west jam ' + w.traffic.armJam.W);
+  assert.ok(w.traffic.jamKm > 0.4);
+  assert.ok(w.H > 0, 'headlines rise');
+});
+
+test('cars never drive through people', () => {
+  const w = newWorld();
+  const sq = placeSquad(w, 'protest', 'bochurim', -30, 0, false);
+  run(w, 40, () => {
+    for (const p of sq.members) {
+      for (const c of w.traffic.cars) {
+        const L = c.lane.L;
+        const perp = L.axis === 'x' ? p.z : p.x;
+        if (Math.abs(perp - L.off) > 1.0) continue;
+        const pd = w.map.laneD(L, p.x, p.z);
+        // החרטום לא חוצה את האדם
+        assert.ok(!(c.d > pd + 0.2 && c.d - c.len < pd - 0.2), 'car body over person');
+      }
+    }
+  });
+});
+
+test('police drag protesters to the van, who are released and return', () => {
+  const w = newWorld();
+  const prot = placeSquad(w, 'protest', 'bochurim', 10, 3, false);
+  const pol = U.makeSquad(w, 'police', 'patrol', 14, 12);
+  U.setGoal(w, pol, 14, 12);
+  w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
+  let detainedSeen = false, returningSeen = false;
+  run(w, 120, () => {
+    for (const p of w.people) {
+      if (p.state === 'detained') detainedSeen = true;
+      if (p.state === 'returning') returningSeen = true;
+    }
+  });
+  assert.ok(w.stats.dragged >= 2, 'dragged ' + w.stats.dragged);
+  assert.ok(detainedSeen, 'someone detained');
+  assert.ok(returningSeen, 'someone released');
+});
+
+test('van departs when full and removes detainees', () => {
+  const w = newWorld();
+  const cap = HM.BAL.police.van.cap;
+  const sq = U.makeSquad(w, 'protest', 'bochurim', 0, 0);
+  for (let i = 0; i < cap; i++) {
+    const p = U.makePerson(w, sq, 'bochur', 17, 25);
+    p.state = 'carried';
+    U.deliverToVan(w, p);
+  }
+  assert.strictEqual(w.van.state, 'away');
+  assert.strictEqual(w.stats.removed, cap);
+});
+
+test('horses scatter a standing squad but halt before sitters (and it makes headlines)', () => {
+  const w = newWorld();
+  const standing = placeSquad(w, 'protest', 'bochurim', -15, 0, false);
+  const horses = U.makeSquad(w, 'police', 'horses', 10, 15);
+  U.setGoal(w, horses, 10, 15);
+  run(w, 2);
+  w.cmd('police', { type: 'target', squads: [horses.id], target: standing.id });
+  let fled = false;
+  run(w, 20, () => { if (standing.fleeT > 0) fled = true; });
+  assert.ok(fled, 'standing squad fled');
+
+  const w2 = newWorld();
+  const sitters = placeSquad(w2, 'protest', 'avrechim', -15, 0, true);
+  run(w2, 6);
+  const h2 = U.makeSquad(w2, 'police', 'horses', 10, 15);
+  U.setGoal(w2, h2, 10, 15);
+  w2.cmd('police', { type: 'target', squads: [h2.id], target: sitters.id });
+  let fled2 = false;
+  run(w2, 20, () => { if (sitters.fleeT > 0) fled2 = true; });
+  assert.ok(!fled2, 'sitters do not flee from horses');
+  assert.ok(w2.stats.scandals >= 1, 'scandal recorded');
+  assert.ok(w2.Hpeak >= HM.BAL.headline.horseOnSitters - 1);
+});
+
+test('water cannon makes a sitting squad flee', () => {
+  const w = newWorld();
+  const sitters = placeSquad(w, 'protest', 'avrechim', 0, 0, true);
+  run(w, 6);
+  const c = U.makeSquad(w, 'police', 'cannon', 20, 25);
+  w.cmd('police', { type: 'target', squads: [c.id], target: sitters.id });
+  let fled = false;
+  run(w, 40, () => { if (sitters.fleeT > 0) fled = true; });
+  assert.ok(fled, 'soaked squad fled');
+  assert.ok(c.vehicle.tank < HM.BAL.police.cannon.tank);
+});
+
+test('askan permit stalls a nearby patrol; shofar has a cooldown', () => {
+  const w = newWorld();
+  const a = placeSquad(w, 'protest', 'askan', 0, 0, false);
+  const pol = U.makeSquad(w, 'police', 'patrol', 4, 4);
+  U.setGoal(w, pol, 4, 4);
+  run(w, 1);
+  const r = w.cmd('protest', { type: 'permit', squad: a.id });
+  assert.ok(r.ok);
+  assert.ok(pol.members.every(c => c.state === 'stalled'));
+  assert.ok(!w.cmd('protest', { type: 'permit', squad: a.id }).ok, 'cooldown');
+  run(w, HM.BAL.protest.shofar.firstAt);
+  assert.ok(w.cmd('protest', { type: 'shofar' }).ok);
+  assert.ok(!w.cmd('protest', { type: 'shofar' }).ok);
+});
+
+test('economy: buying costs money and respects limits', () => {
+  const w = newWorld();
+  w.money.protest = 1000;
+  assert.ok(w.cmd('protest', { type: 'buy', unit: 'askan' }).ok);
+  assert.ok(w.cmd('protest', { type: 'buy', unit: 'askan' }).ok);
+  assert.strictEqual(w.cmd('protest', { type: 'buy', unit: 'askan' }).reason, 'max');
+  w.money.protest = 10;
+  assert.strictEqual(w.cmd('protest', { type: 'buy', unit: 'bochurim' }).reason, 'money');
+  w.money.police = 1000;
+  const r = w.cmd('police', { type: 'buy', unit: 'patrol' });
+  assert.ok(r.ok && r.eta > 0, 'police arrive with a delay');
+  run(w, r.eta + 0.5);
+  assert.ok(w.squads.some(s => s.type === 'patrol'));
+});
+
+test('outcomes: headlines win, sunset win, dispersal', () => {
+  const w = newWorld();
+  w.H = 99.99; w.addHeadline(1, 'test');
+  run(w, 0.1);
+  assert.strictEqual(w.outcome.winner, 'protest');
+
+  const w2 = newWorld({ sunset: 5 });
+  placeSquad(w2, 'protest', 'bochurim', -40, -10, false);
+  run(w2, 6);
+  assert.strictEqual(w2.outcome.winner, 'police');
+  assert.strictEqual(w2.outcome.reason, 'sunset');
+
+  const w3 = newWorld();
+  run(w3, HM.BAL.end.emptyStreetT + 1);
+  assert.strictEqual(w3.outcome.reason, 'dispersed');
+});
+
+test('determinism: same seed gives the same game', () => {
+  const a = new HM.World({ seed: 5, protest: 'ai', police: 'ai' });
+  const b = new HM.World({ seed: 5, protest: 'ai', police: 'ai' });
+  run(a, 60); run(b, 60);
+  assert.strictEqual(a.H.toFixed(6), b.H.toFixed(6));
+  assert.strictEqual(a.traffic.cars.length, b.traffic.cars.length);
+  assert.strictEqual(a.people.length, b.people.length);
+});
+
+test('a full AI vs AI game ends with a winner and no stuck state', () => {
+  const w = new HM.World({ seed: 99, protest: 'ai', police: 'ai' });
+  run(w, 900);
+  assert.ok(w.outcome, 'game ended');
+  assert.ok(['protest', 'police'].includes(w.outcome.winner));
+  assert.ok(w.stats.dragged > 0, 'police did something');
+  for (const p of w.people) {
+    assert.ok(Number.isFinite(p.x) && Number.isFinite(p.z), 'finite positions');
+    assert.ok(!w.map.inBuilding(p.x, p.z, -0.25), 'nobody inside a building');
+  }
+});
