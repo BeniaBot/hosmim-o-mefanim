@@ -448,6 +448,22 @@
             if (mine === 'protest') this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
             else this.alert('הקצין שלכם ביטל את "יש לי אישור" של העסקן', 'good', 'officer', 'pblk');
             break;
+          case 'ambIncoming': {
+            const arm = w.map.arms[e.arm];
+            this.alert(`אמבולנס בדרך${arm ? ' — ' + arm.name : ''}. לא לחסום אותו!`, 'info', 'ambulance', 'ambin');
+            A.siren();
+            break;
+          }
+          case 'ambBlocked':
+            if (mine === 'protest') this.alert(`אמבולנס תקוע מול חוליה ${e.num}! פנו לו דרך תוך ${Math.round(e.limit - 3)} שניות — אחרת התקשורת תתהפך`, 'warn', 'ambulance', 'ambblk');
+            else this.alert('המפגינים חוסמים אמבולנס — אם לא יפנו, זה יפגע בהם', 'info', 'ambulance', 'ambblk');
+            this.bubble('תנו לעבור!', e.x, e.z, 'driver', 2.8, true);
+            break;
+          case 'ambScandal':
+            this.news(N.ambScandal);
+            this.floater('−' + e.amount + ' כותרות', e.x, e.z, mine === 'protest' ? '#ff7b6b' : '#8be59e');
+            this.alert('חסמתם אמבולנס — המד ירד והמורל נפגע', mine === 'protest' ? 'warn' : 'good', 'ambulance');
+            break;
           case 'tramBlocked':
             this.news(N.tram);
             this.alert('הרכבת הקלה תקועה — המד עולה מהר יותר!', mine === 'protest' ? 'good' : 'warn', 'news', 'tram');
@@ -501,6 +517,7 @@
             if (e.reason === 'horseScandal') { this.news(N.horseScandal); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); this.alert('שערורייה: פרשים מול יושבים — המד קפץ!', mine === 'protest' ? 'good' : 'warn', 'news'); }
             else if (e.reason === 'askanArrest') { this.news(N.askanArrest); this.floater('+' + e.amount + ' כותרות', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
             else if (e.reason === 'photoArrest') { this.news(N.photoArrest); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
+            else if (e.reason === 'ambRespect') { this.news(N.ambRespect); this.floater('+' + e.amount + ' כבוד', e.x, e.z); }
             else if (e.reason === 'documented') {
               this.floater('+' + e.amount + ' תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
               if (!this.newsDone.has('doc')) { this.newsDone.add('doc'); this.news(N.documented); }

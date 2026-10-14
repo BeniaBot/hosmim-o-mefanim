@@ -291,6 +291,20 @@
     }
     return merge(p);
   }
+  // אמבולנס: ואן לבן עם פס אדום (בלי סמלים של ארגון אמיתי)
+  function ambulance() {
+    const p = [], w = 2.05, L = 5.6, h = L / 2;
+    p.push(part(box(w, 1.75, L - 1.0), 0xf7f7f5, 0, 1.25, -0.5));
+    p.push(part(box(w, 1.0, 1.0), 0xf7f7f5, 0, 0.82, h - 0.5));
+    p.push(part(box(w - 0.12, 0.55, 0.06), GLASS, 0, 1.6, h - 1.02, -0.35));
+    p.push(part(box(w + 0.03, 0.28, L - 0.2), 0xd8332b, 0, 1.0, 0));
+    p.push(part(box(w + 0.03, 0.12, L - 0.2), 0xd8332b, 0, 1.75, -0.3));
+    p.push(part(box(w + 0.02, 0.42, 1.6), GLASS, 0, 1.62, 0.2));
+    lights(p, w, L, 0.8);
+    wheels(p, w, L, 0.37);
+    return merge(p);
+  }
+
   // רכבת קלה: גוף ארוך עם שלושה קרונות מחוברים
   function tram() {
     const p = [], W = 2.65, L = 30, H = 3.3;
@@ -408,7 +422,7 @@
   }
 
   HM.Models = {
-    lin, part, merge, box, cyl, sph, tram,
+    lin, part, merge, box, cyl, sph, tram, ambulance,
     bochur, avrech, askan, photographer, riot, officer, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier
   };

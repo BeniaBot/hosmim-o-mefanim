@@ -78,6 +78,21 @@
         if (best && w.cmd('protest', { type: 'bus', x: best.x, z: best.z }).ok) this.bought += Bs.squads.length;
       }
 
+      // ---- אמבולנס תקוע מאחורינו: מפנים דרך ----
+      if (w.amb) {
+        for (const a of w.amb.list) {
+          if (!a.warned || a.penalized || !a.blocker || a.blocker.side !== 'protest') continue;
+          const s = a.blocker;
+          if (s.broken || s.yieldT > w.t) continue;
+          if (w.rng.next() > Math.max(0.5, cfg.react === undefined ? 1 : cfg.react)) continue;
+          const c = Un.centroid(s);
+          const sw = w.map.nearestSidewalk(c.x, c.z);
+          s.yieldT = w.t + 12;
+          this.assign.delete(s.id);
+          w.cmd('protest', { type: 'move', squads: [s.id], x: sw.x, z: sw.z });
+        }
+      }
+
       // ---- שופר ----
       const fleeing = mine.filter(s => s.fleeT > 0).length;
       const avgMor = mine.reduce((a, s) => a + s.morale, 0) / Math.max(1, mine.length);
@@ -103,6 +118,7 @@
             if (w.rng.next() < (cfg.react === undefined ? 1 : Math.max(0.3, cfg.react))) w.cmd('protest', { type: 'move', squads: [s.id], x: sp.x, z: sp.z });
           }
         }
+        if (s.yieldT > w.t) continue;
         if (!this.assign.has(s.id)) {
           let best = -1, bs = -1e9;
           const c = Un.centroid(s);

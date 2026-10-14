@@ -608,6 +608,12 @@
       }
       this.cars.tram = inst(M.tram(), cm, 8, { color: true, shadow: true });
       R.add(this.cars.tram);
+      this.ambMesh = inst(M.ambulance(), cm, 4, { shadow: true, color: true });   // חומר משותף עם מכוניות — חייב צבע מופע
+      R.add(this.ambMesh);
+      const lb = new T.BoxGeometry(0.5, 0.16, 0.3);
+      this.ambRed = inst(lb, this.mat(new T.MeshBasicMaterial({ color: 0xff2a2a })), 4);
+      this.ambBlue = inst(lb, this.mat(new T.MeshBasicMaterial({ color: 0x2a6bff })), 4);
+      R.add(this.ambRed); R.add(this.ambBlue);
       const brakeGeo = new T.PlaneGeometry(0.34, 0.16);
       this.brakes = inst(brakeGeo, this.mat(new T.MeshBasicMaterial({ color: 0xff3a2a, side: T.DoubleSide })), 400);
       R.add(this.brakes);
@@ -836,6 +842,23 @@
         m.count = cc[t]; m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
       }
       this.brakes.count = bri; this.brakes.instanceMatrix.needsUpdate = true;
+
+      // ---- אמבולנסים ----
+      let ai = 0, ar = 0, ab = 0;
+      if (w.amb) {
+        const flash = Math.floor(now * 6) % 2 === 0;
+        for (const a of w.amb.list) {
+          const x = U.lerp(a.px, a.x, alpha), z = U.lerp(a.pz, a.z, alpha);
+          setM(this.ambMesh, ai++, x, 0, z, a.heading, 0, 0, 1);
+          const sx = Math.sin(a.heading), sz = Math.cos(a.heading), ox = Math.cos(a.heading) * 0.42, oz = -Math.sin(a.heading) * 0.42;
+          const lx = x + sx * 1.6, lz = z + sz * 1.6;
+          setM(flash ? this.ambRed : this.ambBlue, flash ? ar++ : ab++, lx + ox, 2.2, lz + oz, a.heading, 0, 0, 1);
+          setM(flash ? this.ambBlue : this.ambRed, flash ? ab++ : ar++, lx - ox, 2.2, lz - oz, a.heading, 0, 0, 1);
+        }
+      }
+      this.ambMesh.count = ai; this.ambMesh.instanceMatrix.needsUpdate = true;
+      this.ambRed.count = ar; this.ambRed.instanceMatrix.needsUpdate = true;
+      this.ambBlue.count = ab; this.ambBlue.instanceMatrix.needsUpdate = true;
 
       // ---- מכת"זית ----
       const cs = w.squads.find(s => s.type === 'cannon');

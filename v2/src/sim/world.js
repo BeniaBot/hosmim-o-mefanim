@@ -39,6 +39,7 @@
       this.van = { x: vb.x, z: vb.z, state: 'here', list: [], awayT: 0 };
       this.hash = new Map();
       this.traffic = new HM.Traffic(this);
+      this.amb = (opts.empty && !opts.ambulance) || opts.ambulance === false ? null : new HM.Ambulances(this);
       this.ai = {};
       if (this.ctl.police === 'ai' && HM.PoliceAI) this.ai.police = new HM.PoliceAI(this, opts.policeDifficulty || this.difficulty);
       if (this.ctl.protest === 'ai' && HM.ProtestAI) this.ai.protest = new HM.ProtestAI(this, opts.protestDifficulty || this.difficulty);
@@ -100,6 +101,7 @@
         const kind = p.side === 'protest' ? 'protester' : (this.nearProtest(p.x, p.z) ? 'police' : 'policeIdle');
         out.push({ x: p.x, z: p.z, r: p.r + 0.2, kind, person: p.side === 'protest', ref: p });
       }
+      if (this.amb) this.amb.obstacles(out);
       for (const sq of this.squads) {
         if (!sq.vehicle) continue;
         const V = sq.vehicle;
@@ -464,6 +466,7 @@
       this.cleanupSquads();
 
       this.traffic.step(dt);
+      if (this.amb) this.amb.update(dt);
       this.updateHeadlines(dt);
       this.checkOutcome(dt);
     }

@@ -373,3 +373,28 @@ test('chords bridge: a blocked tram boosts the headline meter', () => {
   assert.ok(blocked, 'a tram got stuck');
   assert.ok((w.stats.tramT || 0) > 5);
 });
+
+test('ambulance: blocking it too long turns the media; clearing the way earns respect', () => {
+  // חסימה ממושכת
+  const w = new HM.World({ seed: 8, protest: 'human', police: 'human', empty: true, ambulance: true });
+  const sq = placeSquad(w, 'protest', 'bochurim', -25, 0, true);
+  void sq;
+  w.H = 50;
+  w.amb.nextT = 1;
+  let scandal = false;
+  run(w, 60, () => { for (const e of w.events.list) if (e.type === 'ambScandal') scandal = true; });
+  assert.ok(scandal, 'scandal when the ambulance is blocked');
+  // פינוי בזמן
+  const w2 = new HM.World({ seed: 8, protest: 'human', police: 'human', empty: true, ambulance: true });
+  const s2 = placeSquad(w2, 'protest', 'bochurim', -25, 0, true);
+  w2.amb.nextT = 1;
+  let respect = false, moved = false;
+  run(w2, 60, () => {
+    for (const e of w2.events.list) {
+      if (e.type === 'ambBlocked' && !moved) { moved = true; w2.cmd('protest', { type: 'move', squads: [s2.id], x: -25, z: 9.5 }); }
+      if (e.type === 'headline' && e.reason === 'ambRespect') respect = true;
+    }
+  });
+  assert.ok(moved, 'ambulance got blocked first');
+  assert.ok(respect, 'respect for clearing the way');
+});

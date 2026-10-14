@@ -96,6 +96,10 @@
       humanStart: ['patrol', 'patrol'] // הכוח הפותח כשהשחקן משטרה
     },
 
+    // ----- אמבולנס -----
+    ambulance: { first: [110, 160], every: [120, 175], speed: 13, warnAfter: 3, scandalAfter: 15,
+                 scandalH: 10, scandalMorale: 12, respectH: 2 },
+
     // ----- סיום -----
     end: {
       emptyStreetT: 30,       // אין אף מפגין ברחוב כל הזמן הזה = ההפגנה התפזרה
@@ -109,7 +113,7 @@
       // wave = כמה חוליות יוצאות יחד בגל
       normal: { think: 0.7, incomeMul: 0.75, turnout: 16, wave: 2, react: 0.75 },
       easy:   { think: 1.3, incomeMul: 0.45, turnout: 10, wave: 2, react: 0.4 },
-      hard:   { think: 0.5, incomeMul: 0.9, turnout: 22, wave: 2, react: 0.95 },
+      hard:   { think: 0.5, incomeMul: 1.0, turnout: 24, wave: 2, react: 0.95 },
       bot:    { think: 0.8, incomeMul: 1.0, turnout: 999, wave: 1, react: 1.0 }   // שחקן-בדיקה
     },
 
