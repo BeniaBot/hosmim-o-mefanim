@@ -706,6 +706,8 @@
       if (q.state === 'carried' || q.state === 'detained' || q.side === 'police') continue;   // שוטרים זזים הצידה
       if (U.dist2(q.x, q.z, fx, fz) < 2.4 * 2.4) { V.v = Math.min(V.v, 0); break; }
     }
+    // רכב אזרחי ממש מקדימה — מאטים (המכוניות מפנות דרך לאט)
+    if (world.carAt(fx, fz, 0.6)) V.v = Math.min(V.v, 0.8);
     V.x += Math.sin(V.heading) * V.v * dt;
     V.z += Math.cos(V.heading) * V.v * dt;
     return false;

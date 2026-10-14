@@ -475,8 +475,8 @@
             for (const sq of w.squads) if (sq.side === 'protest' && sq.members.length && Math.random() < 0.5) { const c = HM.Units.centroid(sq); this.bubble(TX().pick(L.shofar), c.x, c.z); }
             break;
           case 'headline':
-            if (e.reason === 'horseScandal') { this.news(N.horseScandal); this.floater('+' + e.amount + ' כותרות!', e.x, e.z); this.alert('שערורייה: פרשים מול יושבים — המד קפץ!', mine === 'protest' ? 'good' : 'warn', 'news'); }
-            else if (e.reason === 'askanArrest') { this.news(N.askanArrest); this.floater('+' + e.amount + ' כותרות', e.x, e.z); }
+            if (e.reason === 'horseScandal') { this.news(N.horseScandal); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); this.alert('שערורייה: פרשים מול יושבים — המד קפץ!', mine === 'protest' ? 'good' : 'warn', 'news'); }
+            else if (e.reason === 'askanArrest') { this.news(N.askanArrest); this.floater('+' + e.amount + ' כותרות', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
             break;
           case 'nearMiss':
             this.bubble(TX().pick(L.nearMiss), e.x, e.z);
