@@ -53,6 +53,7 @@
       HM.Audio.muted = this.settings.muted;
       this.hud = new HM.HUD(this);
       this.input = new HM.Input(this);
+      this.minimap = new HM.Minimap(this);
       this.wireMenus();
       root.addEventListener('resize', () => this.stage.resize());
       // ממתינים לגופנים לפני ציור שלטים
@@ -169,6 +170,7 @@
       this.setWorld(w);
       this.demo = false;
       this.hud.bind(w, this.side);
+      this.minimap.bind(w);
       const cam = this.stage.cam;
       if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
       else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
@@ -359,7 +361,7 @@
       this.input.update(dtReal);
       this.view.update(alpha, dtReal, { selected: this.demo ? null : this.input.selected, targetSet: this.input.targetSet });
       this.stage.setDay(w.t / w.sunset);
-      if (!this.demo && this.mode !== 'menu') this.hud.update(dtReal);
+      if (!this.demo && this.mode !== 'menu') { this.hud.update(dtReal); this.minimap.update(dtReal); }
       this.tickTutorial(dtReal);
       if (!this.demo && w.outcome && !this.endShown) {
         this.endShown = true;

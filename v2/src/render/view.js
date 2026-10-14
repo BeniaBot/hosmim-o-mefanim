@@ -282,7 +282,7 @@
 
     buildBuildings() {
       const map = this.world.map, R = this.root;
-      const groups = { apt: [], shop: [], yeshiva: [], police: [] };
+      const groups = { apt: [], apt1: [], apt2: [], shop: [], yeshiva: [], police: [] };
       const roofParts = [];
       const signs = [];
       const extra = this.fillerBuildings();
@@ -292,8 +292,11 @@
       const heaters = [];
       const wallParts = [];
       for (const B of all) {
-        const h = B.h, st = B.style || 'apt';
+        const h = B.h;
+        let st = B.style || 'apt';
         if (st === 'pylon') continue;
+        // גיוון: שלושה סוגי חזיתות לבנייני מגורים
+        if (st === 'apt') { const k = Math.abs(Math.round(B.x0 * 7 + B.z0 * 13)) % 3; if (k) st = 'apt' + k; }
         if (st === 'wall' || st === 'barrier') {
           // קיר אקוסטי / מעקה בטון
           const w = B.x1 - B.x0, d = B.z1 - B.z0, cx = (B.x0 + B.x1) / 2, cz = (B.z0 + B.z1) / 2;
@@ -326,7 +329,7 @@
         roofParts.push(M.part(M.box(B.x1 - B.x0 + 0.3, 0.6, 0.3), 0xd8ccb5, (B.x0 + B.x1) / 2, h + CURB_H + 0.3, B.z1));
         roofParts.push(M.part(M.box(0.3, 0.6, B.z1 - B.z0), 0xd8ccb5, B.x0, h + CURB_H + 0.3, (B.z0 + B.z1) / 2));
         roofParts.push(M.part(M.box(0.3, 0.6, B.z1 - B.z0), 0xd8ccb5, B.x1, h + CURB_H + 0.3, (B.z0 + B.z1) / 2));
-        if (st === 'apt' && !B.filler) {
+        if (st.startsWith('apt') && !B.filler) {
           const n = Math.floor((B.x1 - B.x0) * (B.z1 - B.z0) / 90);
           for (let k = 0; k < n; k++) heaters.push({ x: B.x0 + 1.5 + rnd() * (B.x1 - B.x0 - 3), z: B.z0 + 1.5 + rnd() * (B.z1 - B.z0 - 3), y: h + CURB_H + 0.2, r: rnd() < 0.5 ? 0 : 0.15 });
         }

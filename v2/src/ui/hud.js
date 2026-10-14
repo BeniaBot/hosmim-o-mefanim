@@ -273,7 +273,7 @@
       const now = performance.now();
       if (!this.hudRects || now - this.hudRectsT > 500) {
         this.hudRectsT = now;
-        this.hudRects = ['moneyBox', 'meterBox', 'sunBox', 'ctrlBox', 'buyPanel', 'selPanel', 'newsPanel']
+        this.hudRects = ['moneyBox', 'meterBox', 'sunBox', 'ctrlBox', 'buyPanel', 'selPanel', 'newsPanel', 'minimap']
           .map(id => $(id)).filter(e => e && e.offsetParent !== null).map(e => e.getBoundingClientRect());
       }
       for (const r of this.hudRects) if (x > r.left - 30 && x < r.right + 30 && y > r.top - 4 && y < r.bottom + 26) return true;
@@ -311,7 +311,9 @@
         let p = this.project(px, 2, pz);
         if (!p) { el.style.display = 'none'; continue; }
         const m = 90;
-        const cx = U.clamp(p.x, m, st.w - m), cy = U.clamp(p.y, 130, st.h - 200);
+        const cx = U.clamp(p.x, m, st.w - m);
+        let cy = U.clamp(p.y, 130, st.h - 200);
+        if (cx < 250 && cy < 305) cy = 305;   // לא מעל המיני-מפה
         // חץ לכיוון הכניסה כשהיא מחוץ למסך
         let arrow = '';
         if (p.x < m) arrow = '◄'; else if (p.x > st.w - m) arrow = '►'; else if (p.y < 130) arrow = '▲'; else if (p.y > st.h - 200) arrow = '▼';
@@ -570,6 +572,34 @@
       if (!this.newsDone.has('sun60') && left <= 60) { this.newsDone.add('sun60'); this.alert('דקה אחת לשקיעה!', 'warn', 'sun'); }
     }
 
+    // רשימת החוליות שלכם (כשאין בחירה) — לחיצה בוחרת
+    renderRoster() {
+      const box = $('selEmpty');
+      const mine = this.w.squads.filter(s => s.side === this.side && !s.broken && (s.members.length || s.vehicle || this.awayCount(s)))
+        .sort((a, b) => a.num - b.num);
+      const key = mine.map(s => s.id + ':' + s.members.length + ':' + this.squadState(s)).join(',');
+      if (key === this.rosterKey && box.childElementCount) return;
+      this.rosterKey = key;
+      box.innerHTML = '';
+      const head = document.createElement('div');
+      head.className = 'rosterHead';
+      head.textContent = this.side === 'protest' ? 'החוליות שלכם — לחצו על אחת כדי לבחור אותה (או גררו מלבן על המפה)' : 'הכוחות שלכם — לחצו על אחד כדי לבחור אותו';
+      box.appendChild(head);
+      const row = document.createElement('div');
+      row.className = 'roster';
+      for (const s of mine.slice(0, 12)) {
+        const b = document.createElement('button');
+        b.className = 'rosterChip';
+        const n = s.vehicle ? '' : s.members.length;
+        b.innerHTML = `<span class="num ${s.side === 'police' ? 'pol' : ''}">${s.num}</span>${HM.ICONS[s.type]}<span>${n}</span><span class="st">${this.squadState(s)}</span>`;
+        b.title = TX().UNITS[s.type].name;
+        b.onclick = (e) => { e.stopPropagation(); this.g.input.selectClick(s, e.shiftKey || e.ctrlKey); };
+        b.ondblclick = (e) => { e.stopPropagation(); this.g.input.focus(s); };
+        row.appendChild(b);
+      }
+      box.appendChild(row);
+    }
+
     // ---------- לוח החוליה הנבחרת ----------
     updateSelection(force) {
       const inp = this.g.input;
@@ -583,9 +613,7 @@
         $('selEmpty').classList.remove('hidden');
         $('selBody').classList.add('hidden');
         this.selExplainDefault = '';
-        $('selEmpty').textContent = this.side === 'protest'
-          ? 'לחצו על השלט הצהוב של חוליה כדי לבחור אותה. גרירה עם העכבר בוחרת כמה חוליות.'
-          : 'לחצו על חוליה כדי לבחור אותה.';
+        this.renderRoster();
         return;
       }
       $('selEmpty').classList.add('hidden');

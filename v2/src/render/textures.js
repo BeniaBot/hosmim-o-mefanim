@@ -34,7 +34,7 @@
   // חזית מגורים: מקטע אחד = 4 מ' רוחב × 3 מ' גובה (קומה)
   function facade(kind) {
     const w = 256, h = 192, c = canvas(w, h), g = c.getContext('2d');
-    const base = kind === 'police' ? '#e8e3d8' : kind === 'yeshiva' ? '#e3d3b4' : '#e6dac3';
+    const base = kind === 'police' ? '#e8e3d8' : kind === 'yeshiva' ? '#e3d3b4' : kind === 'apt1' ? '#ead6b2' : kind === 'apt2' ? '#ddd7cc' : '#e6dac3';
     stoneNoise(g, w, h, base, kind === 'yeshiva' ? 11 : 7);
     if (kind === 'yeshiva') {
       // חלון קשתי
@@ -52,10 +52,25 @@
       g.fillStyle = 'rgba(255,255,255,0.18)'; g.fillRect(76, 56, 30, 80);
       g.fillStyle = '#d8cfba'; g.fillRect(126, 52, 4, 88);
       g.fillStyle = '#b7a888'; g.fillRect(58, 148, 140, 8);
-      // תריס גלילה חלקי
-      g.fillStyle = '#ddd5c2'; g.fillRect(72, 52, 112, 18);
-      g.strokeStyle = 'rgba(0,0,0,0.12)';
-      for (let y = 54; y < 70; y += 4) { g.beginPath(); g.moveTo(72, y); g.lineTo(184, y); g.stroke(); }
+      if (kind === 'apt1') {
+        // תריסים ירוקים בצדדים
+        g.fillStyle = '#5f7f5a';
+        g.fillRect(48, 52, 22, 88); g.fillRect(186, 52, 22, 88);
+        g.strokeStyle = 'rgba(0,0,0,0.18)';
+        for (let y = 56; y < 140; y += 6) { g.beginPath(); g.moveTo(48, y); g.lineTo(70, y); g.moveTo(186, y); g.lineTo(208, y); g.stroke(); }
+      } else if (kind === 'apt2') {
+        // מרפסת עם מעקה
+        g.fillStyle = '#c9c2b4'; g.fillRect(52, 132, 152, 10);
+        g.strokeStyle = '#7d7a73'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(54, 112); g.lineTo(202, 112); g.stroke();
+        g.lineWidth = 2;
+        for (let x = 58; x < 202; x += 12) { g.beginPath(); g.moveTo(x, 112); g.lineTo(x, 132); g.stroke(); }
+      } else {
+        // תריס גלילה חלקי
+        g.fillStyle = '#ddd5c2'; g.fillRect(72, 52, 112, 18);
+        g.strokeStyle = 'rgba(0,0,0,0.12)';
+        for (let y = 54; y < 70; y += 4) { g.beginPath(); g.moveTo(72, y); g.lineTo(184, y); g.stroke(); }
+      }
     }
     return tex(c, true);
   }

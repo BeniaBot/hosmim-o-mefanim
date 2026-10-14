@@ -1,0 +1,24 @@
+{
+  "name": "hosmim-o-mefanim",
+  "productName": "חוסמים או מפנים",
+  "version": "2.0.0",
+  "description": "משחק אסטרטגיה סאטירי בעברית — עובד בלי אינטרנט",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "local.hosmim-o-mefanim",
+    "productName": "חוסמים או מפנים",
+    "files": ["main.js", "app/**/*"],
+    "compression": "maximum",
+    "win": { "target": "portable", "icon": "app/icon-512.png" },
+    "portable": { "artifactName": "חוסמים או מפנים.exe" }
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
+  }
+}
