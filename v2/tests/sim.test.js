@@ -34,9 +34,9 @@ test('nav: path goes around buildings and stays walkable', () => {
   const m = HM.buildMap('barilan', HM.BAL);
   const nav = HM.buildNav(m);
   // מחצר הישיבה אל מאחורי בניין הישיבה
-  const p = nav.foot.path(-25, -27, -25, -60);
+  const p = nav.foot.path(-25, 27, -25, 56);
   assert.ok(p.length >= 2, 'needs a detour');
-  let prev = { x: -25, z: -27 };
+  let prev = { x: -25, z: 27 };
   for (const q of p) { assert.ok(nav.foot.los(prev.x, prev.z, q.x, q.z), 'segment clear'); prev = q; }
 });
 
@@ -82,8 +82,8 @@ test('cars never drive through people', () => {
 test('police drag protesters to the van, who are released and return', () => {
   const w = newWorld();
   const prot = placeSquad(w, 'protest', 'bochurim', 10, 3, false);
-  const pol = U.makeSquad(w, 'police', 'patrol', 14, 12);
-  U.setGoal(w, pol, 14, 12);
+  const pol = U.makeSquad(w, 'police', 'patrol', 14, -9);
+  U.setGoal(w, pol, 14, -9);
   w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
   let detainedSeen = false, returningSeen = false;
   run(w, 120, () => {
@@ -102,7 +102,7 @@ test('van departs when full and removes detainees', () => {
   const cap = HM.BAL.police.van.cap;
   const sq = U.makeSquad(w, 'protest', 'bochurim', 0, 0);
   for (let i = 0; i < cap; i++) {
-    const p = U.makePerson(w, sq, 'bochur', 17, 25);
+    const p = U.makePerson(w, sq, 'bochur', w.van.x, w.van.z);
     p.state = 'carried';
     U.deliverToVan(w, p);
   }
@@ -113,8 +113,8 @@ test('van departs when full and removes detainees', () => {
 test('horses scatter a standing squad but halt before sitters (and it makes headlines)', () => {
   const w = newWorld();
   const standing = placeSquad(w, 'protest', 'bochurim', -15, 0, false);
-  const horses = U.makeSquad(w, 'police', 'horses', 10, 15);
-  U.setGoal(w, horses, 10, 15);
+  const horses = U.makeSquad(w, 'police', 'horses', 12, -9);
+  U.setGoal(w, horses, 12, -9);
   run(w, 2);
   w.cmd('police', { type: 'target', squads: [horses.id], target: standing.id });
   let fled = false;
@@ -124,8 +124,8 @@ test('horses scatter a standing squad but halt before sitters (and it makes head
   const w2 = newWorld();
   const sitters = placeSquad(w2, 'protest', 'avrechim', -15, 0, true);
   run(w2, 6);
-  const h2 = U.makeSquad(w2, 'police', 'horses', 10, 15);
-  U.setGoal(w2, h2, 10, 15);
+  const h2 = U.makeSquad(w2, 'police', 'horses', 12, -9);
+  U.setGoal(w2, h2, 12, -9);
   w2.cmd('police', { type: 'target', squads: [h2.id], target: sitters.id });
   let fled2 = false;
   run(w2, 20, () => { if (sitters.fleeT > 0) fled2 = true; });
@@ -138,7 +138,7 @@ test('water cannon makes a sitting squad flee', () => {
   const w = newWorld();
   const sitters = placeSquad(w, 'protest', 'avrechim', 0, 0, true);
   run(w, 6);
-  const c = U.makeSquad(w, 'police', 'cannon', 20, 25);
+  const c = U.makeSquad(w, 'police', 'cannon', 20, -25);
   w.cmd('police', { type: 'target', squads: [c.id], target: sitters.id });
   let fled = false;
   run(w, 40, () => { if (sitters.fleeT > 0) fled = true; });

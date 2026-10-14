@@ -102,6 +102,20 @@
       }
       return out;
     }
+    // האם הנקודה בתוך גוף של מכונית (לאנשים: לא עוברים דרך רכבים)
+    carAt(x, z, r) {
+      const laneW = this.BAL.traffic.laneW;
+      for (const lane of this.traffic.lanes) {
+        const L = lane.L;
+        const perp = L.axis === 'x' ? z : x;
+        if (Math.abs(perp - L.off) > laneW / 2 + r) continue;
+        const d = this.map.laneD(L, x, z);
+        for (const c of lane.cars) {
+          if (d < c.d + r && d > c.d - c.len - r && Math.abs(perp - L.off) < c.wid / 2 + r) return c;
+        }
+      }
+      return null;
+    }
     nearRoad(x, z, d) {
       return this.map.isRoad(x + d, z) || this.map.isRoad(x - d, z) || this.map.isRoad(x, z + d) || this.map.isRoad(x, z - d);
     }
@@ -261,12 +275,12 @@
         const sq = HM.Units.makeSquad(this, 'protest', type, b.x, b.z);
         const k = this.squads.filter(s => s.side === 'protest').length;
         HM.Units.setGoal(this, sq, b.rally.x + ((k % 5) - 2) * 4.5, b.rally.z - (k % 2) * 3, null);
-        this.events.push('arrived', { side, type, squad: sq.id, x: b.x, z: b.z });
+        this.events.push('arrived', { side, unit: type, squad: sq.id, x: b.x, z: b.z });
         return { ok: true, squad: sq.id };
       }
       const arm = this.BAL.police.arrivalDelay;
       this.pending.push({ side, type, at: this.t + arm });
-      this.events.push('incoming', { side, type, eta: arm });
+      this.events.push('incoming', { side, unit: type, eta: arm });
       return { ok: true, eta: arm };
     }
 
@@ -280,7 +294,7 @@
         const k = this.squads.filter(s => s.side === 'police').length;
         if (sq.vehicle) { sq.vehicle.heading = Math.PI; }
         else HM.Units.setGoal(this, sq, b.rally.x + ((k % 4) - 1.5) * 5, b.rally.z, null);
-        this.events.push('arrived', { side: 'police', type: p.type, squad: sq.id, x: b.x, z: b.z });
+        this.events.push('arrived', { side: 'police', unit: p.type, squad: sq.id, x: b.x, z: b.z });
       }
     }
 

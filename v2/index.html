@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>חוסמים או מפנים</title>
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- ===== טעינה ===== -->
+<div id="loading" class="scr">
+  <div class="paper small">
+    <div class="masthead">חוסמים או מפנים</div>
+    <div class="dek" id="loadMsg">מסדרים את הצומת…</div>
+  </div>
+</div>
+
+<!-- ===== תפריט ראשי ===== -->
+<div id="menu" class="scr hidden">
+  <div class="paper">
+    <div class="paperTop"><span>מהדורת אחר הצהריים</span><span>משחק סאטירי</span></div>
+    <div class="masthead">חוסמים או מפנים</div>
+    <div class="rule"></div>
+    <div class="dek">צומת אחד, אחר צהריים אחד. המפגינים רוצים להגיע לכותרות לפני השקיעה — והמשטרה רוצה שהשמש תשקע קודם.</div>
+
+    <div class="pick">
+      <div class="pickLbl">באיזה צד אתם?</div>
+      <div class="seg" id="sideSeg">
+        <button class="segBtn active" data-side="protest"><b>מארגני ההפגנה</b><span>חוסמים את הצומת ומביאים אותה לכותרות</span></button>
+        <button class="segBtn" data-side="police" disabled title="בבנייה — יגיע בשלב הבא"><b>מפקד המשטרה</b><span>בקרוב</span></button>
+      </div>
+    </div>
+    <div class="pickRow">
+      <div class="pick">
+        <div class="pickLbl">מקום</div>
+        <div class="seg" id="mapSeg">
+          <button class="segBtn active" data-map="barilan"><b>צומת בר אילן</b><span>ירושלים</span></button>
+          <button class="segBtn" data-map="kvish4" disabled><b>כביש 4</b><span>בקרוב</span></button>
+          <button class="segBtn" data-map="gesher" disabled><b>גשר המיתרים</b><span>בקרוב</span></button>
+        </div>
+      </div>
+      <div class="pick">
+        <div class="pickLbl">קושי</div>
+        <div class="seg" id="diffSeg">
+          <button class="segBtn" data-diff="easy"><b>קל</b></button>
+          <button class="segBtn active" data-diff="normal"><b>רגיל</b></button>
+          <button class="segBtn" data-diff="hard"><b>קשה</b></button>
+        </div>
+      </div>
+    </div>
+    <button class="bigBtn" id="btnStart">התחילו</button>
+    <div class="startSum" id="startSum"></div>
+    <div class="menuLinks">
+      <button class="link" id="btnHow">איך משחקים</button>
+      <button class="link" id="btnSettings">הגדרות</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== איך משחקים ===== -->
+<div id="howto" class="scr hidden">
+  <div class="paper">
+    <div class="masthead mid">איך משחקים</div>
+    <div class="rule"></div>
+    <div class="howGrid">
+      <div class="howCard"><div class="howNum">1</div><b>המטרה</b><p>כל עוד יש פקק, <b>מד הכותרות</b> עולה. הגעתם ל-100 לפני השקיעה — ניצחתם.</p></div>
+      <div class="howCard"><div class="howNum">2</div><b>לבחור ולשלוח</b><p>לחיצה על חוליה בוחרת אותה. לחיצה על הכביש שולחת אותה לשם — והיא נפרסת בשורה לרוחב הכביש.</p></div>
+      <div class="howCard"><div class="howNum">3</div><b>לשבת</b><p>חוליה שיושבת קשה יותר לגרור, והפרשים לא מתקרבים אליה. אבל המכת"זית מרימה גם יושבים.</p></div>
+      <div class="howCard"><div class="howNum">4</div><b>תגבורת</b><p>הכסף נכנס מתרומות — וככל שהמד גבוה, נכנס יותר. מזמינים חוליות מהלוח בפינה.</p></div>
+    </div>
+    <table class="keys">
+      <tr><td>עכבר שמאלי</td><td>בחירה · גרירה = בחירת כמה חוליות · לחיצה על הכביש = שליחה</td></tr>
+      <tr><td>עכבר ימני</td><td>שליחה (כמו שמאלי) · גרירה = הזזת המצלמה</td></tr>
+      <tr><td>גלגלת / ‎+ −</td><td>התקרבות והתרחקות</td></tr>
+      <tr><td>חיצים / W A S D</td><td>הזזת המצלמה · Q / E סיבוב</td></tr>
+      <tr><td>1–9</td><td>בחירת חוליה לפי המספר שלה</td></tr>
+      <tr><td>S</td><td>לשבת / לקום</td></tr>
+      <tr><td>F</td><td>"יש לי אישור!" (עסקן)</td></tr>
+      <tr><td>Z X C · V</td><td>הזמנת בחורים · אברכים · עסקן · שופר</td></tr>
+      <tr><td>רווח / P / Esc</td><td>הפסקה</td></tr>
+    </table>
+    <button class="bigBtn" id="btnHowBack">הבנתי</button>
+  </div>
+</div>
+
+<!-- ===== הגדרות ===== -->
+<div id="settings" class="scr hidden">
+  <div class="paper small">
+    <div class="masthead mid">הגדרות</div>
+    <div class="rule"></div>
+    <div class="setRow"><span>עוצמת קול</span><input type="range" id="volSlider" min="0" max="100" value="70"></div>
+    <div class="setRow"><span>איכות גרפיקה</span>
+      <div class="seg mini" id="qualSeg">
+        <button class="segBtn" data-q="low"><b>חסכונית</b></button>
+        <button class="segBtn active" data-q="medium"><b>רגילה</b></button>
+        <button class="segBtn" data-q="high"><b>גבוהה</b></button>
+      </div>
+    </div>
+    <div class="setNote" id="qualNote">שינוי איכות נכנס לתוקף במשחק הבא.</div>
+    <button class="bigBtn" id="btnSetBack">חזרה</button>
+  </div>
+</div>
+
+<!-- ===== מסך המשחק ===== -->
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div class="panel" id="moneyBox" title="הכסף נכנס מתרומות. ככל שמד הכותרות גבוה — נכנס יותר.">
+      <div class="lbl" id="moneyLbl">קופת ההפגנה</div>
+      <div class="big"><span id="money">0</span> <small>₪</small></div>
+      <div class="sub" id="income">+0 לשנייה</div>
+    </div>
+    <div class="panel" id="meterBox">
+      <div class="meterHead"><span class="lbl">מד הכותרות</span><span id="meterVal">0</span><span id="meterRate"></span></div>
+      <div class="meter"><div id="meterFill"></div><div class="meterGoal">100 = ניצחון</div></div>
+      <div class="sub" id="jamLine">אין פקק</div>
+    </div>
+    <div class="panel" id="sunBox" title="כשהשמש שוקעת — ההפגנה נגמרת.">
+      <svg viewBox="0 0 120 54" id="sunSvg"><path d="M8 50 A52 52 0 0 1 112 50" class="arc"/><line x1="2" y1="50" x2="118" y2="50" class="hz"/><circle id="sunDot" cx="20" cy="30" r="7"/></svg>
+      <div><div class="lbl">שקיעה בעוד</div><div class="big" id="sunTime">8:00</div></div>
+    </div>
+    <div id="ctrlBox">
+      <button class="iconBtn" id="btnPause" title="הפסקה (רווח)">❚❚</button>
+      <button class="iconBtn" id="btnSpeed" title="מהירות המשחק">×1</button>
+      <button class="iconBtn" id="btnMute" title="קול (M)">♪</button>
+    </div>
+  </div>
+  <div id="alerts"></div>
+  <div id="badges"></div>
+  <div id="floaters"></div>
+  <div id="hint"></div>
+  <div id="bottom">
+    <div class="panel" id="buyPanel">
+      <div class="lbl">הזמנת תגבורת</div>
+      <div id="buyCards"></div>
+    </div>
+    <div class="panel" id="selPanel">
+      <div id="selEmpty">לחצו על חוליה כדי לבחור אותה. גרירה בוחרת כמה חוליות.</div>
+      <div id="selBody" class="hidden">
+        <div id="selHead"></div>
+        <div id="selActions"></div>
+        <div id="selExplain"></div>
+      </div>
+    </div>
+    <div class="panel" id="newsPanel">
+      <div class="lbl">מבזקים</div>
+      <div id="news"></div>
+    </div>
+  </div>
+  <div id="selrect"></div>
+</div>
+
+<!-- ===== הפסקה ===== -->
+<div id="pause" class="scr hidden dim">
+  <div class="paper small">
+    <div class="masthead mid">הפסקה</div>
+    <div class="rule"></div>
+    <button class="bigBtn" id="btnResume">המשך לשחק</button>
+    <button class="bigBtn sec" id="btnRestart">התחל את המשחק מחדש</button>
+    <button class="bigBtn sec" id="btnQuit">יציאה לתפריט הראשי</button>
+    <div class="setRow"><span>עוצמת קול</span><input type="range" id="volSlider2" min="0" max="100" value="70"></div>
+  </div>
+</div>
+
+<!-- ===== סיום ===== -->
+<div id="end" class="scr hidden dim">
+  <div class="paper">
+    <div class="paperTop"><span id="endEdition">מהדורה מיוחדת</span><span id="endPlace"></span></div>
+    <div class="masthead mid" id="endTitle"></div>
+    <div class="rule"></div>
+    <div class="stars" id="endStars"></div>
+    <div class="dek" id="endSub"></div>
+    <div class="statGrid" id="endStats"></div>
+    <div class="endBtns">
+      <button class="bigBtn" id="btnAgain">משחק נוסף</button>
+      <button class="bigBtn sec" id="btnEndMenu">לתפריט הראשי</button>
+    </div>
+  </div>
+</div>
+
+<!-- three.js r128 (MIT) — מקומי -->
+<script src="lib/three.min.js"></script>
+<!-- הסימולציה (רצה גם ב-Node) -->
+<script src="src/core/util.js"></script>
+<script src="src/sim/balance.js"></script>
+<script src="src/sim/maps.js"></script>
+<script src="src/sim/nav.js"></script>
+<script src="src/sim/traffic.js"></script>
+<script src="src/sim/units.js"></script>
+<script src="src/sim/ai_police.js"></script>
+<script src="src/sim/ai_protest.js"></script>
+<script src="src/sim/world.js"></script>
+<!-- ציור, ממשק, קול -->
+<script src="src/render/models.js"></script>
+<script src="src/render/textures.js"></script>
+<script src="src/render/scene.js"></script>
+<script src="src/render/view.js"></script>
+<script src="src/audio/audio.js"></script>
+<script src="src/ui/text.js"></script>
+<script src="src/ui/hud.js"></script>
+<script src="src/ui/input.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>

@@ -52,7 +52,7 @@
   // אוסף בסיסי של אירועים — הסימולציה דוחפת, הממשק והסאונד שואבים
   class EventQueue {
     constructor() { this.list = []; }
-    push(type, data) { const e = Object.assign({ type }, data || {}); this.list.push(e); return e; }
+    push(type, data) { const e = Object.assign({}, data || {}, { type }); this.list.push(e); return e; }
     drain() { const l = this.list; this.list = []; return l; }
   }
 

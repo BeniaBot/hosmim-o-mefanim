@@ -8,8 +8,8 @@
 
     // ----- מד הכותרות -----
     headline: {
-      perKmSec: 0.45,         // כמה נקודות לשנייה לכל ק"מ פקק
-      deadzoneKm: 0.35,       // פקק "רגיל" של רמזור לא נחשב
+      perKmSec: 0.25,         // כמה נקודות לשנייה לכל ק"מ פקק
+      deadzoneKm: 0.08,       // פקק "רגיל" של רמזור לא נחשב
       decay: 0.35,            // ירידה לשנייה כשאין פקק
       maxRate: 2.0,            // תקרה לשנייה (שלא ייגמר בפתאומיות)
       horseOnSitters: 5,      // שערורייה: פרשים מול יושבים
@@ -60,9 +60,9 @@
     // ----- יחידות המפגינים -----
     protest: {
       bochurim: { name: 'בחורי ישיבה', members: 5, speed: 3.3, cost: 110,
-                  grab: { stand: 2.6, sit: 4.5 }, copsSit: 1, morale: 85 },
+                  grab: { stand: 2.6, sit: 5.5 }, copsSit: 1, morale: 85 },
       avrechim: { name: 'אברכים', members: 4, speed: 2.25, cost: 150,
-                  grab: { stand: 3.4, sit: 7.0 }, copsSit: 2, morale: 95 },
+                  grab: { stand: 3.4, sit: 8.5 }, copsSit: 2, morale: 95 },
       askan:    { name: 'עסקן', members: 1, speed: 2.7, cost: 220, max: 2,
                   grab: { stand: 4.0, sit: 4.0 }, copsSit: 1, morale: 100 },
       permit:   { cooldown: 28, range: 10, stall: 9 },
@@ -101,9 +101,9 @@
 
     // ----- המשטרה הממוחשבת (כשהשחקן מפגין) -----
     policeAI: {
-      normal: { think: 0.5, patrolAt: 22, horsesAt: 85, cannonAt: 150, incomeMul: 1.3, maxPatrols: 4 },
-      easy:   { think: 1.0, patrolAt: 35, horsesAt: 130, cannonAt: 220, incomeMul: 0.95, maxPatrols: 3 },
-      hard:   { think: 0.4, patrolAt: 18, horsesAt: 70, cannonAt: 130, incomeMul: 1.55, maxPatrols: 5 }
+      normal: { think: 0.5, patrolAt: 40, horsesAt: 85, cannonAt: 150, incomeMul: 1.3, maxPatrols: 4 },
+      easy:   { think: 1.2, patrolAt: 60, horsesAt: 180, cannonAt: 300, incomeMul: 0.7, maxPatrols: 2 },
+      hard:   { think: 0.35, patrolAt: 28, horsesAt: 60, cannonAt: 110, incomeMul: 2.0, maxPatrols: 5 }
     }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -165,7 +165,7 @@
           if (car.d > bx.d0 - 0.1) continue;                     // כבר בתוך הצומת או אחריו
           const toStop = bx.stopD - car.d;
           if (toStop > 60) break;
-          let stop = false;
+          let stop = false, why = 'light';
           if (lightAx !== 'G') {
             const need = (car.v * car.v) / (2 * 6);
             if (toStop >= need - 0.5) stop = true;               // יכול לעצור — עוצר
@@ -173,13 +173,14 @@
             const crossOcc = L.axis === 'x' ? bx.j.occZ : bx.j.occX;
             if (crossOcc > 0 && toStop < 18) stop = true;
             if (i > 0) {
+              // היציאה מהצומת חסומה — לא נכנסים (ואם זה בגלל פקק של ההפגנה, זה נחשב פקק)
               const ld = cars[i - 1];
-              if (ld.d - ld.len < bx.d1 + car.len + 1.5 && ld.v < 1.5 && toStop < 25) stop = true;
+              if (ld.d - ld.len < bx.d1 + car.len + 1.5 && ld.v < 1.5 && toStop < 25) { stop = true; if (ld.jammed) why = 'car'; }
             }
           }
           if (stop) {
             const a = this.idmAcc(car.v, v0, toStop + 0.6, car.v, car.accel);
-            if (a < acc) { acc = a; blockBy = 'light'; }
+            if (a < acc) { acc = a; blockBy = why; }
             limitD = Math.min(limitD, bx.stopD + 0.6);
           }
           break;

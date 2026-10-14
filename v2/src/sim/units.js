@@ -28,10 +28,19 @@
     return p;
   }
 
+  // המספר הפנוי הקטן ביותר — כך שמקשי 1–9 תמיד מכסים את החוליות החיות
+  function freeNum(world, side) {
+    const used = new Set();
+    for (const s of world.squads) if (s.side === side) used.add(s.num);
+    let n = 1;
+    while (used.has(n)) n++;
+    return n;
+  }
+
   function makeSquad(world, side, type, x, z) {
     const cfg = cfgOf(world, side, type);
     const sq = {
-      id: world.nextId++, side, type, cfg, num: ++world.squadNum[side],
+      id: world.nextId++, side, type, cfg, num: freeNum(world, side),
       members: [], goal: { x, z }, anchor: { x, z }, path: null, pathI: 0, moving: false,
       finalSlots: null, stance: 'stand', morale: cfg.morale || 100, maxMorale: cfg.morale || 100,
       fleeT: 0, flee: null, broken: false, target: null, mode: 'idle', modeT: 0, cd: {},
@@ -190,6 +199,13 @@
     if (!foot.isWalkable(nx, nz)) {
       if (foot.isWalkable(nx, p.z)) { nz = p.z; p.vz = 0; }
       else if (foot.isWalkable(p.x, nz)) { nx = p.x; p.vx = 0; }
+      else { nx = p.x; nz = p.z; p.vx = p.vz = 0; }
+    }
+    // לא עוברים דרך מכוניות — מחליקים לאורכן
+    const rr = p.kind === 'rider' ? 0.9 : 0.25;
+    if ((nx !== p.x || nz !== p.z) && world.carAt(nx, nz, rr) && !world.carAt(p.x, p.z, rr)) {
+      if (!world.carAt(nx, p.z, rr)) { nz = p.z; p.vz = 0; }
+      else if (!world.carAt(p.x, nz, rr)) { nx = p.x; p.vx = 0; }
       else { nx = p.x; nz = p.z; p.vx = p.vz = 0; }
     }
     p.x = nx; p.z = nz;
@@ -499,7 +515,7 @@
     }
     // מי שמוחזק — נשאר ייגרר; מי שבחוץ — ילך הביתה כשישתחרר
     sq.members = sq.members.filter(p => p.state === 'held');
-    world.events.push('broken', { squad: sq.id, type: sq.type, num: sq.num });
+    world.events.push('broken', { squad: sq.id, unit: sq.type, num: sq.num });
     world.stats.broken++;
   }
 
@@ -638,7 +654,7 @@
     // לא דורסים: עוצרים אם יש אדם ממש מקדימה
     const fx = V.x + Math.sin(V.heading) * 4.2, fz = V.z + Math.cos(V.heading) * 4.2;
     for (const q of world.neighbors(fx, fz, 2.4)) {
-      if (q.state === 'carried' || q.state === 'detained') continue;
+      if (q.state === 'carried' || q.state === 'detained' || q.side === 'police') continue;   // שוטרים זזים הצידה
       if (U.dist2(q.x, q.z, fx, fz) < 2.4 * 2.4) { V.v = Math.min(V.v, 0); break; }
     }
     V.x += Math.sin(V.heading) * V.v * dt;
