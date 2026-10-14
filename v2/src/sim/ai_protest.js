@@ -8,8 +8,10 @@
   class ProtestAI {
     constructor(world, difficulty, opts) {
       this.w = world;
-      this.cfg = (world.BAL.protestAI && world.BAL.protestAI[difficulty]) || { think: 0.8, incomeMul: 1, buy: true, react: true };
+      const tiers = world.BAL.protestAI || {};
+      this.cfg = tiers[difficulty] || tiers.normal || { think: 0.8, incomeMul: 1, turnout: 999, wave: 1, react: 1 };
       this.incomeMul = this.cfg.incomeMul;
+      this.bought = 0;
       this.thinkT = 0.5;
       this.assign = new Map();   // squad id -> spot index
       this.opts = opts || {};
@@ -17,7 +19,8 @@
       this.buyIdx = 0;
     }
 
-    hasMore() { return true; }
+    // האם להפגנה נשארו עוד משתתפים שיכולים להגיע
+    hasMore() { return this.bought < (this.cfg.turnout || 0); }
 
     makeSpots() {
       const m = this.w.map, out = [];
@@ -44,15 +47,20 @@
       const mine = w.squads.filter(s => s.side === 'protest' && !s.broken && s.members.length);
       const police = w.squads.filter(s => s.side === 'police');
 
-      // ---- קניות ----
-      if (cfg.buy !== false) {
+      // ---- קניות (בגלים: חוסכים ויוצאים כמה חוליות יחד) ----
+      if (cfg.buy !== false && this.hasMore()) {
         const order = ['bochurim', 'avrechim', 'bochurim', 'askan', 'avrechim'];
-        for (let tries = 0; tries < order.length; tries++) {
-          const type = order[this.buyIdx % order.length];
-          const can = w.canBuy('protest', type);
-          if (can.ok) { w.cmd('protest', { type: 'buy', unit: type }); this.buyIdx++; break; }
-          if (can.reason === 'max') { this.buyIdx++; continue; }
-          break;
+        const wave = Math.max(1, cfg.wave || 1);
+        if (wave === 1 || w.money.protest >= wave * 135) {
+          let n = 0;
+          for (let tries = 0; tries < order.length * 2 && n < wave && this.hasMore(); tries++) {
+            const type = order[this.buyIdx % order.length];
+            const can = w.canBuy('protest', type);
+            if (can.ok) { w.cmd('protest', { type: 'buy', unit: type }); this.buyIdx++; this.bought++; n++; continue; }
+            if (can.reason === 'max') { this.buyIdx++; continue; }
+            break;
+          }
+          if (n >= 2) w.events.push('wave', { n });
         }
       }
 
@@ -73,6 +81,14 @@
       const askans = mine.filter(s => s.type === 'askan');
       for (const s of mine) {
         if (s.type === 'askan' || s.fleeT > 0) continue;
+        // חוליה ששובצה אבל לא נמצאת בנקודה (ברחה, נדחקה) — חוזרת אליה
+        if (this.assign.has(s.id) && !s.moving) {
+          const sp = this.spots[this.assign.get(s.id)];
+          const c0 = Un.centroid(s);
+          if (U.dist(c0.x, c0.z, sp.x, sp.z) > 6) {
+            if (w.rng.next() < (cfg.react === undefined ? 1 : Math.max(0.3, cfg.react))) w.cmd('protest', { type: 'move', squads: [s.id], x: sp.x, z: sp.z });
+          }
+        }
         if (!this.assign.has(s.id)) {
           let best = -1, bs = -1e9;
           const c = Un.centroid(s);
@@ -92,10 +108,12 @@
         }
       }
 
-      // ---- תגובות ----
-      if (cfg.react !== false) {
+      // ---- תגובות (ברמות נמוכות — מגיבים רק לפעמים, כמו בני אדם) ----
+      const react = cfg.react === undefined ? 1 : cfg.react;
+      if (react > 0) {
         for (const s of mine) {
           if (s.type === 'askan' || s.fleeT > 0) continue;
+          if (react < 1 && w.rng.next() > react) continue;
           const c = Un.centroid(s);
           const onRoad = w.map.isRoad(c.x, c.z);
           let horseNear = false, cannonNear = false, copsNear = 0;

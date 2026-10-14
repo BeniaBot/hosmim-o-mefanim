@@ -9,7 +9,7 @@ for (const v of vals) {
     setPath(BAL, key, v);
     let win = 0, tsum = 0;
     for (let s = 1; s <= n; s++) {
-      const w = new HM.World({ BAL, seed: s * 7919, protest: 'ai', police: 'ai', policeDifficulty: diff, protestDifficulty: 'normal' });
+      const w = new HM.World({ BAL, seed: s * 7919, protest: 'ai', police: 'ai', policeDifficulty: diff, protestDifficulty: 'bot' });
       while (!w.outcome && w.t < 900) { w.step(); w.events.drain(); }
       if (w.outcome.winner === 'protest') { win++; tsum += w.outcome.t; }
     }

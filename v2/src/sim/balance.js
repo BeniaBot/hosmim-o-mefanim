@@ -8,7 +8,7 @@
 
     // ----- מד הכותרות -----
     headline: {
-      perKmSec: 0.25,         // כמה נקודות לשנייה לכל ק"מ פקק
+      perKmSec: 0.19,         // כמה נקודות לשנייה לכל ק"מ פקק
       deadzoneKm: 0.08,       // פקק "רגיל" של רמזור לא נחשב
       decay: 0.35,            // ירידה לשנייה כשאין פקק
       maxRate: 2.0,            // תקרה לשנייה (שלא ייגמר בפתאומיות)
@@ -82,7 +82,10 @@
       cannon:  { name: 'מכת"זית', cost: 560, max: 1, speed: 5, range: 17, halfAngle: 0.38,
                  tank: 18, refill: 12, wetToFlee: 1.1 },
       van:     { cap: 10, release: 45, away: 50 },
-      arrivalDelay: 7         // מרגע ההזמנה עד שהכוח יוצא מהבסיס
+      arrivalDelay: 7,        // מרגע ההזמנה עד שהכוח יוצא מהבסיס
+      autoEngage: 12,         // שוטרים במנוחה עוצרים מפגינים על הכביש בטווח הזה
+      megaphone: { cooldown: 40, firstAt: 20, range: 16, morale: 22, fleeBelow: 40 },
+      humanStart: ['patrol', 'patrol'] // הכוח הפותח כשהשחקן משטרה
     },
 
     // ----- סיום -----
@@ -94,15 +97,20 @@
 
     // ----- המפגינים הממוחשבים (בדיקות, ובהמשך יריב) -----
     protestAI: {
-      normal: { think: 0.8, incomeMul: 1.0 },
-      easy:   { think: 1.5, incomeMul: 0.8 },
-      hard:   { think: 0.4, incomeMul: 1.2 }
+      // turnout = כמה חוליות ההפגנה יכולה להזמין בסך הכול (מעבר לפותחות)
+      // wave = כמה חוליות יוצאות יחד בגל
+      normal: { think: 0.7, incomeMul: 0.75, turnout: 16, wave: 2, react: 0.75 },
+      easy:   { think: 1.3, incomeMul: 0.45, turnout: 10, wave: 2, react: 0.4 },
+      hard:   { think: 0.5, incomeMul: 0.9, turnout: 22, wave: 2, react: 0.95 },
+      bot:    { think: 0.8, incomeMul: 1.0, turnout: 999, wave: 1, react: 1.0 }   // שחקן-בדיקה
     },
 
     // ----- המשטרה הממוחשבת (כשהשחקן מפגין) -----
     policeAI: {
       normal: { think: 0.5, patrolAt: 40, horsesAt: 85, cannonAt: 150, incomeMul: 1.3, maxPatrols: 4 },
       easy:   { think: 1.2, patrolAt: 60, horsesAt: 180, cannonAt: 300, incomeMul: 0.7, maxPatrols: 2 },
+      // שחקן-משטרה ממוחשב בלי מגבלות זמן — משמש לכיוונון מצב המשטרה
+      human:  { think: 0.6, patrolAt: 0, horsesAt: 0, cannonAt: 0, incomeMul: 1.0, maxPatrols: 5 },
       hard:   { think: 0.35, patrolAt: 28, horsesAt: 60, cannonAt: 110, incomeMul: 2.0, maxPatrols: 5 }
     }
   };

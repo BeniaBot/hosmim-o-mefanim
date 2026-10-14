@@ -47,7 +47,7 @@ const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
   if (scenario === 'closeup') {
     await p.click('#btnStart');
     await p.waitForTimeout(1000);
-    await p.evaluate(() => { const w = HM.Game.world; w.ai.protest = new HM.ProtestAI(w, 'normal'); });
+    await p.evaluate(() => { const w = HM.Game.world; w.ai.protest = new HM.ProtestAI(w, 'bot'); });
     await ff(75);
     await p.evaluate(() => { const c = HM.Game.stage.cam; c.tx = -2; c.tz = 1; c.dist = 30; c.pitch = 0.72; c.yaw = 0.5; document.getElementById('hud').style.display = 'none'; });
     await p.waitForTimeout(800);
@@ -64,7 +64,7 @@ const URL = 'file://' + path.resolve(__dirname, '..', 'index.html');
   if (scenario === 'full' || scenario === 'idle') {
     await p.click('#btnStart');
     await p.waitForTimeout(1200);
-    if (scenario === 'full') await p.evaluate(() => { const w = HM.Game.world; w.ai.protest = new HM.ProtestAI(w, 'normal'); });
+    if (scenario === 'full') await p.evaluate(() => { const w = HM.Game.world; w.ai.protest = new HM.ProtestAI(w, 'bot'); });
     let k = 0;
     for (;;) {
       await ff(scenario === 'full' ? 45 : 120);

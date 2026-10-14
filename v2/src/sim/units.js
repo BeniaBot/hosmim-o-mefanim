@@ -540,11 +540,56 @@
     world.events.push('flee', { squad: sq.id, x: c.x, z: c.z, reason });
   }
 
+  // אחרי פינוי חוזרים לעמדה — ואם העמדה על הכביש, יורדים למדרכה הקרובה
+  // (שוטרים שעומדים על הכביש עוצרים גם הם את התנועה)
+  function returnToGuard(world, sq) {
+    let g = sq.guard;
+    if (!g || world.map.isRoad(g.x, g.z)) {
+      const c = centroid(sq);
+      const s2 = world.map.nearestSidewalk(c.x, c.z);
+      g = world.nav.foot.nearestWalkable(s2.x, s2.z);
+      sq.guard = { x: g.x, z: g.z };
+    }
+    setGoal(world, sq, g.x, g.z, null);
+  }
+
   // ---------- שוטרים: בחירת מטרות ----------
   function updatePatrolSquad(world, sq) {
-    const tgt = sq.target ? world.squadById(sq.target) : null;
-    if (sq.target && (!tgt || tgt.broken || !tgt.members.length)) { sq.target = null; sq.mode = 'idle'; }
-    if (!sq.target) return;
+    let tgt = sq.target ? world.squadById(sq.target) : null;
+    const R = world.BAL.police.autoEngage;
+    if (sq.target && (!tgt || tgt.broken || !tgt.members.length)) {
+      sq.target = null; sq.mode = 'idle'; sq.auto = false;
+      returnToGuard(world, sq);
+    }
+    if (!sq.target) {
+      // שוטרים במנוחה עוצרים מפגינים שחוסמים קרוב אליהם
+      if (sq.moving || !sq.members.length || !sq.members.every(c => c.state === 'free')) return;
+      const g = sq.guard || centroid(sq);
+      let best = null, bd = R * R;
+      for (const o of world.squads) {
+        if (o.side !== 'protest' || o.broken || !o.members.length || o.fleeT > 0) continue;
+        let onRoad = false;
+        for (const p of o.members) if (world.map.isRoad(p.x, p.z)) { onRoad = true; break; }
+        if (!onRoad) continue;
+        const c = centroid(o);
+        const d = U.dist2(c.x, c.z, g.x, g.z);
+        if (d < bd) { bd = d; best = o; }
+      }
+      if (!best) return;
+      sq.target = best.id; sq.mode = 'arrest'; sq.auto = true;
+      tgt = best;
+      world.events.push('autoEngage', { squad: sq.id, target: best.id });
+    }
+    // חוליה שיצאה למעצר אוטומטי לא נגררת רחוק מהעמדה שלה
+    if (sq.auto && sq.guard) {
+      const tc = centroid(tgt);
+      if (U.dist(tc.x, tc.z, sq.guard.x, sq.guard.z) > R + 10 && !sq.members.some(c => c.state === 'drag' || c.state === 'grab')) {
+        sq.target = null; sq.auto = false; sq.mode = 'idle';
+        for (const c of sq.members) if (c.state === 'seek') { dropVictim(c); c.state = 'free'; }
+        returnToGuard(world, sq);
+        return;
+      }
+    }
     // מתקרבים לחוליית המטרה
     const tc = centroid(tgt);
     if (U.dist(sq.goal.x, sq.goal.z, tc.x, tc.z) > 6) setGoal(world, sq, tc.x, tc.z, null);
@@ -570,7 +615,11 @@
   function updateHorseSquad(world, sq, dt) {
     const H = world.BAL.police.horses;
     sq.modeT -= dt;
-    if (sq.mode === 'regroup' && sq.modeT <= 0) sq.mode = 'idle';
+    if (sq.mode === 'regroup' && sq.modeT <= 0) {
+      sq.mode = 'idle';
+      const c = centroid(sq);
+      if (world.map.isRoad(c.x, c.z)) returnToGuard(world, sq);
+    }
     if (sq.mode === 'charge') {
       const tgt = world.squadById(sq.target);
       if (!tgt || tgt.broken || !tgt.members.length || tgt.fleeT > 0) {
@@ -807,6 +856,6 @@
     KIND, ON_STREET, makeSquad, makePerson, centroid, setGoal, refreshSlots, updateSquad, updatePerson,
     updateGrabs, updatePatrolSquad, updateHorseSquad, updateVan, deliverToVan, fleeSquad, hitMorale,
     breakSquad, usePermit, useShofar, squadSitting, isSitting, lineAxisAt, formationWidth, computeSlots,
-    dropVictim, vehicleGo, centroidOf: centroid
+    dropVictim, vehicleGo, returnToGuard, centroidOf: centroid
   };
 })(typeof window !== 'undefined' ? window : globalThis);

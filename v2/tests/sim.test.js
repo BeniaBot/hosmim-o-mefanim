@@ -194,8 +194,8 @@ test('outcomes: headlines win, sunset win, dispersal', () => {
 });
 
 test('determinism: same seed gives the same game', () => {
-  const a = new HM.World({ seed: 5, protest: 'ai', police: 'ai' });
-  const b = new HM.World({ seed: 5, protest: 'ai', police: 'ai' });
+  const a = new HM.World({ seed: 5, protest: 'ai', police: 'ai', protestDifficulty: 'bot' });
+  const b = new HM.World({ seed: 5, protest: 'ai', police: 'ai', protestDifficulty: 'bot' });
   run(a, 60); run(b, 60);
   assert.strictEqual(a.H.toFixed(6), b.H.toFixed(6));
   assert.strictEqual(a.traffic.cars.length, b.traffic.cars.length);
@@ -203,7 +203,7 @@ test('determinism: same seed gives the same game', () => {
 });
 
 test('a full AI vs AI game ends with a winner and no stuck state', () => {
-  const w = new HM.World({ seed: 99, protest: 'ai', police: 'ai' });
+  const w = new HM.World({ seed: 99, protest: 'ai', police: 'ai', protestDifficulty: 'bot' });
   run(w, 900);
   assert.ok(w.outcome, 'game ended');
   assert.ok(['protest', 'police'].includes(w.outcome.winner));

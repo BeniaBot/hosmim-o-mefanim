@@ -104,6 +104,19 @@
         if (best) w.cmd('police', { type: 'target', squads: [h.id], target: best.sq.id });
       }
 
+      // ---- כריזה: על קבוצה גדולה של עומדים ----
+      if (w.megaCD <= 0 && t >= w.BAL.police.megaphone.firstAt) {
+        const Mg = w.BAL.police.megaphone;
+        let best = null, bn = 1;
+        for (const x of th) {
+          if (x.sitting) continue;
+          let n = 0;
+          for (const y of th) if (!y.sitting && U.dist(x.c.x, x.c.z, y.c.x, y.c.z) < Mg.range * 0.8) n += y.n;
+          if (n > bn) { bn = n; best = x; }
+        }
+        if (best && bn >= 6) w.cmd('police', { type: 'megaphone', x: best.c.x, z: best.c.z });
+      }
+
       // ---- מכת"זית ----
       for (const c of this.mine('cannon')) {
         const V = c.vehicle;
