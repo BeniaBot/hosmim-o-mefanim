@@ -54,7 +54,7 @@
   const STATE = {
     moving: 'בדרך', movingToSit: 'בדרך לשבת', blocking: 'חוסמים', sitting: 'יושבים', sittingDown: 'מתיישבים', standingUp: 'קמים', fleeing: 'בורחים!',
     waiting: 'ממתינים', sidewalk: 'על המדרכה', arresting: 'עוצרים', charging: 'שועטים', regroup: 'מתארגנים',
-    stalled: 'מתווכחים', drive: 'נוסעת', spray: 'מתיזה', refill: 'ממלאת מים', ret: 'חוזרת למלא', idle: 'ממתינים', away: 'בעצירה'
+    stalled: 'מתווכחים', drive: 'נוסעת', spray: 'מתיזה', refill: 'ממלאת מים', ret: 'חוזרת למלא', vIdle: 'ממתינה', idle: 'ממתינים', away: 'בעצירה'
   };
 
   // בוחרים את המשפט שנאמר הכי מעט (ולא את זה שנאמר הרגע) — שלא יחזור אותו משפט שוב ושוב

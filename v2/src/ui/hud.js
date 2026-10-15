@@ -257,7 +257,7 @@
       const S = TX().STATE;
       if (sq.vehicle) {
         const st = sq.vehicle.state;
-        return st === 'spray' ? S.spray : st === 'refill' ? S.refill : st === 'return' ? S.ret : st === 'drive' ? S.drive : S.idle;
+        return st === 'spray' ? S.spray : st === 'refill' ? S.refill : st === 'return' ? S.ret : st === 'drive' ? S.drive : S.vIdle;
       }
       if (sq.side === 'police') {
         if (sq.type === 'horses') return sq.mode === 'charge' ? S.charging : sq.mode === 'regroup' ? S.regroup : S.idle;
