@@ -169,7 +169,7 @@
         if (v.walkT > 7 + Math.random() * 3) { v.walkT = 0; v.stopT = 2.5; }
       }
       mesh.visible = true;
-      const bob = (v.stopT > 0 ? 0 : Math.abs(Math.sin(performance.now() / 1000 * 7)) * 0.04);
+      const bob = (v.stopT > 0 ? 0 : Math.abs(Math.sin(this.clock * 7)) * 0.04);
       mesh.position.set(v.x, this.groundY(v.x, v.z) + bob, v.z);
       mesh.rotation.y = v.face;
     }
@@ -189,7 +189,7 @@
         const x = c.x - ch * off + sh * 0.4, z = c.z + sh * off + ch * 0.4;   // צד הנהג (שמאל)
         d.x = x; d.z = z;
         d.mesh.position.set(x, this.groundY(x, z), z);
-        d.mesh.rotation.y = c.heading + Math.PI / 2 * (0.6 + 0.2 * Math.sin(performance.now() / 900));
+        d.mesh.rotation.y = c.heading + Math.PI / 2 * (0.6 + 0.2 * Math.sin(this.clock / 0.9));
         d.mesh.visible = true;
       }
       if (w.t < this.driverNextT || w.outcome) return;
@@ -832,13 +832,14 @@
     // ---------- עדכון לפריים ----------
     update(alpha, dtReal, ui) {
       const gdt = ui && ui.paused ? 0 : dtReal;   // אנימציות של העולם (מוכר, נהגים, מים) קופאות בהשהיה
+      this.clock = (this.clock || 0) + gdt;      // שעון האנימציות (נדנוד, הבהוב) — עומד בהשהיה
       const w = this.world;
       const counts = { bochur: 0, avrech: 0, askan: 0, photographer: 0, cop: 0, riot: 0, officer: 0, rider: 0 };
       let li = 0, bi = 0, hi = 0, ri = 0, ti = 0;
       const sel = ui && ui.selected ? ui.selected : null;
       const tgtSet = ui && ui.targetSet ? ui.targetSet : null;
       const legs = this.legs, blobs = this.blobs;
-      const now = performance.now() / 1000;
+      const now = this.clock;
       const sc = this.signs.map(() => 0);
       let sti = 0;
       const camYaw = this.stage.cam.yaw;

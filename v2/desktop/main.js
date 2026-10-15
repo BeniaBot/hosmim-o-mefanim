@@ -49,6 +49,10 @@ function createWindow() {
   win.webContents.on('before-input-event', (e, input) => {
     if (input.type === 'keyDown' && input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
   });
+  // backgroundThrottling:false מבטל גם את "הדף מוסתר" של הדפדפן — אז מודיעים למשחק בעצמנו על מזעור
+  const tell = (ev) => win.webContents.executeJavaScript(`window.dispatchEvent(new Event('${ev}')); 0`).catch(() => {});
+  win.on('minimize', () => tell('hm-hidden'));
+  win.on('restore', () => tell('hm-shown'));
   win.on('close', () => saveState(win));
   win.loadFile(path.join(__dirname, 'app', 'index.html'));
   if (!st || st.max) win.maximize();

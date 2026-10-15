@@ -932,7 +932,9 @@
         if (!tgt) {
           // פקודת תנועה בלי מטרה — נוסעים ליעד ועוצרים שם
           if (sq.target) { sq.target = null; V.state = 'idle'; V.v = 0; break; }
-          if (driveVehicle(world, V, C.speed, dt)) { V.state = 'idle'; V.v = 0; }
+          // הגיעה — או שהדרך ליעד חסומה (אנשים/פקק) כבר כמה שניות: עוצרים כאן ולא "נוסעים" לנצח
+          V.stillT = V.v < 0.3 ? (V.stillT || 0) + dt : 0;
+          if (driveVehicle(world, V, C.speed, dt) || V.stillT > 3) { V.state = 'idle'; V.v = 0; V.stillT = 0; }
           break;
         }
         if (tgt.broken || !tgt.members.length) { V.state = 'idle'; sq.target = null; V.v = 0; break; }

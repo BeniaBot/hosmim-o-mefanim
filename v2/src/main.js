@@ -136,7 +136,9 @@
       // כפתור שנלחץ לא נשאר "בפוקוס" — אחרת רווח/Enter ילחצו עליו שוב
       document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
       // חלון ממוזער / לשונית אחרת — עוצרים את המשחק (שלא ימשיך בלי השחקן)
-      document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'play' && !this.demo && this.world && !this.world.outcome) this.togglePause(); });
+      const onHidden = () => { if (this.mode === 'play' && !this.demo && this.world && !this.world.outcome) this.togglePause(); };
+      document.addEventListener('visibilitychange', () => { if (document.hidden) onHidden(); });
+      window.addEventListener('hm-hidden', onHidden);   // מזעור בגרסת המחשב (שם visibilitychange לא נורה)
       root.addEventListener('keyup', (e) => { if (e.code === 'Space') e.preventDefault(); });
       $('btnAgain').onclick = () => this.startGame();
       $('btnEndMenu').onclick = () => this.toMenu();

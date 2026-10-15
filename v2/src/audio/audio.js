@@ -27,6 +27,11 @@
         if (!this.ctx) return;
         if (root.document.hidden) this.ctx.suspend(); else this.ctx.resume();
       });
+      // בגרסת המחשב: העטיפה מודיעה על מזעור/שחזור
+      if (root.addEventListener) {
+        root.addEventListener('hm-hidden', () => { if (this.ctx) this.ctx.suspend(); });
+        root.addEventListener('hm-shown', () => { if (this.ctx) this.ctx.resume(); });
+      }
     },
     setVolume(v) { this.vol = v; if (this.master && !this.muted) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05); },
     setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : this.vol, this.ctx.currentTime, 0.05); },

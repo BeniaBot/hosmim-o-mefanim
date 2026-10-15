@@ -46,7 +46,7 @@
       this.buildCards();
       $('news').innerHTML = '';
       $('alerts').innerHTML = '';
-      this.honks = 0; this.nearN = 0; this.rosterKey = null;
+      this.honks = 0; this.nearN = 0; this.pblkN = 0; this.rosterKey = null;
       this.tick = { q: [], t: 0, idle: 0, last: null };
       $('tickText').textContent = '';
       this.chatT = 6; this.gagT = 0;
@@ -484,7 +484,7 @@
     alert(text, kind, icon, key, ms) {
       if (key) {
         const now = performance.now();
-        if (this.lastAlertKey[key] && now - this.lastAlertKey[key] < 4000) return;
+        if (this.lastAlertKey[key] && now - this.lastAlertKey[key] < 4000) return false;
         this.lastAlertKey[key] = now;
       }
       const box = $('alerts');
@@ -495,6 +495,7 @@
       el.querySelector('span').textContent = text;
       box.appendChild(el);
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, ms || 3600);
+      return true;
     }
     news(text) {
       if (Array.isArray(text)) text = TX().pick(text);
@@ -557,7 +558,7 @@
             break;
           case 'permitBlocked':
             if (!(this.officerBubbleT > performance.now())) { this.officerBubbleT = performance.now() + 8000; this.bubble(TX().pick(L.officer), e.x + 1.5, e.z + 1.5, 'cop', 3.2, true); }
-            if (mine === 'protest') this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
+            if (mine === 'protest' && this.pblkN++ < 3) this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
             else this.alert('הקצין שלכם ביטל את "יש לי אישור" של העסקן', 'good', 'officer', 'pblk');
             break;
           case 'ambIncoming': {
@@ -666,7 +667,7 @@
             this.bubble(TX().pick(L.nearMiss), e.x, e.z);
             A.honk(1.4);
             // ההסבר חשוב בפעמים הראשונות; אחר כך מספיקה הבועה והצפירה
-            if (e.side === mine && this.nearN++ < 3) this.alert('כמעט! רכב בלם ברגע האחרון — היכנסו לכביש כשהרמזור אדום', 'warn', 'car', 'near');
+            if (e.side === mine && this.nearN < 3 && this.alert('כמעט! רכב בלם ברגע האחרון — היכנסו לכביש כשהרמזור אדום', 'warn', 'car', 'near')) this.nearN++;
             break;
           case 'honk': {
             this.honks++;

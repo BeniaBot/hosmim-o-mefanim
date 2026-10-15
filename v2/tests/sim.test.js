@@ -562,3 +562,12 @@ test('on Kvish 4 an ambulance in the inner lane keeps off the median barrier', (
     w.amb.list.length = 0;
   }
 });
+
+test('water cannon sent to a spot blocked by protesters stops nearby instead of "driving" forever', () => {
+  const w = newWorld();
+  placeSquad(w, 'protest', 'avrechim', -20, 0, true);
+  const can = U.makeSquad(w, 'police', 'cannon', 30, -31);
+  w.cmd('police', { type: 'move', squads: [can.id], x: -20, z: 0 });
+  run(w, 60);
+  assert.strictEqual(can.vehicle.state, 'idle');
+});

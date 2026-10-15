@@ -194,6 +194,12 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   check('time stops while paused', (await ev(() => HM.Game.world.t)) === t0);
   await p.click('#btnResume');
   check('resume button resumes', (await ev(() => HM.Game.mode)) === 'play');
+  // מזעור בגרסת המחשב: העטיפה שולחת hm-hidden — המשחק עוצר והקול מושהה
+  await ev(() => window.dispatchEvent(new Event('hm-hidden')));
+  await p.waitForTimeout(200);
+  check('minimizing the desktop window pauses the game', (await ev(() => HM.Game.mode)) === 'paused' && await visible('pause') && await ev(() => !HM.Audio.ctx || HM.Audio.ctx.state !== 'running'));
+  await ev(() => window.dispatchEvent(new Event('hm-shown')));
+  await p.click('#btnResume');
   await p.keyboard.press('Space');
   check('space pauses', (await ev(() => HM.Game.mode)) === 'paused');
   await p.click('#btnRestart');
@@ -286,7 +292,7 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   // מכת"זית — חזרה למילוי
   await ev(() => { const w = HM.Game.world; const c = w.squads.find(s => s.type === 'cannon'); HM.Game.input.selected.clear(); HM.Game.input.selected.add(c.id); c.vehicle.tank = 3; HM.Game.hud.updateSelection(true); });
   await p.keyboard.press('KeyR');
-  check('R sends cannon to refill', (await ev(() => HM.Game.world.squads.find(s => s.type === 'cannon').vehicle.state)) === 'return');
+  check('R sends cannon to refill', (await ev(() => HM.Game.world.squads.find(s => s.type === 'cannon').vehicle.state)) === 'return', await ev(() => { const V = HM.Game.world.squads.find(s => s.type === 'cannon').vehicle; return [V.state, V.parked, HM.Game.mode, V.tank]; }));
   // לרדת למדרכה
   await ev(() => { const w = HM.Game.world; const s = w.squads.find(q => q.type === 'patrol'); HM.Game.input.selected.clear(); HM.Game.input.selected.add(s.id); w.cmd('police', { type: 'move', squads: [s.id], x: 0, z: 0 }); });
   await ff(10);
