@@ -688,7 +688,7 @@
       R.add(this.horses);
 
       // שלטי מחאה ביד (כל שלישי מחזיק שלט)
-      this.signTexts = ['לא זזים!', 'יש לנו זמן', 'יושבים בשקט', 'סבלנות, נהגים!'];
+      this.signTexts = ['לא זזים!', 'יש לנו זמן', 'צפרו אם אתם תקועים', 'סבלנות, נהגים!', 'סליחה על העיכוב', 'עד השקיעה'];
       const boardGeo = new T.PlaneGeometry(1.0, 0.56);
       this.signs = this.signTexts.map(t => {
         const tex = HM.Tex.placard(t);
@@ -901,7 +901,7 @@
             const hx = x - Math.cos(p.face) * 0.36, hz = z + Math.sin(p.face) * 0.36;
             const top = bodyY + 1.42 * S;
             const sway = Math.sin(now * 2.2 + p.id) * 0.06;
-            setM(sm, sc[si]++, hx, top, hz, camYaw + sway, -0.32, 0, 1);
+            setM(sm, sc[si]++, hx, top + 0.1, hz, camYaw + sway, -0.32, 0, 1.3);   // שלט גדול מעט — שיהיה אפשר לקרוא
             setM(this.sticks, sti++, hx, top - 0.62, hz, 0, 0, sway, 1);
           }
         }
