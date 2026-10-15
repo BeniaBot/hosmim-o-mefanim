@@ -138,6 +138,15 @@
       }
       if (this.chatT > 0) return;
       this.chatT = 7 + Math.random() * 7;
+      // לפעמים — שוטרים שעומדים בלי משימה
+      if (Math.random() < 0.35) {
+        const idle = w.squads.filter(s => s.side === 'police' && !s.vehicle && s.members.length && !s.moving && !s.target && s.members.every(c => c.state === 'free'));
+        if (idle.length) {
+          const s = idle[Math.floor(Math.random() * idle.length)], c = HM.Units.centroid(s);
+          this.bubble(TX().pick(TX().LINES.copIdle), c.x, c.z, 'cop', 3.2);
+          return;
+        }
+      }
       const cand = w.squads.filter(s => s.side === 'protest' && !s.broken && s.members.length && !s.moving && w.map.isRoad(HM.Units.centroid(s).x, HM.Units.centroid(s).z));
       if (!cand.length) return;
       const s = cand[Math.floor(Math.random() * cand.length)];
