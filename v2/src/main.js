@@ -58,6 +58,7 @@
       this.input = new HM.Input(this);
       this.minimap = new HM.Minimap(this);
       this.wireMenus();
+      this.wireMenuKeys();
       root.addEventListener('resize', () => this.stage.resize());
       // אם כרטיס המסך מאבד את ההקשר — הודעה ברורה במקום מסך שחור
       const cv = this.stage.renderer.domElement;
@@ -163,7 +164,7 @@
       const side = this.side === 'protest' ? 'מארגני ההפגנה' : 'מפקד המשטרה';
       const map = HM.MAP_DEFS[this.mapId] ? HM.MAP_DEFS[this.mapId].name : '';
       const diff = { easy: 'קל', normal: 'רגיל', hard: 'קשה' }[this.diff];
-      $('btnStart').textContent = this.side === 'protest' ? 'התחילו את ההפגנה' : 'התחילו את המבצע';
+      $('btnStart').innerHTML = (this.side === 'protest' ? 'התחילו את ההפגנה' : 'התחילו את המבצע') + ' <span class="kbdHint">Enter</span>';
       $('startSum').textContent = `${side} · ${map} · ${diff}`;
     },
 
@@ -196,11 +197,8 @@
       this.demo = false;
       this.hud.bind(w, this.side);
       this.minimap.bind(w);
-      const cam = this.stage.cam;
-      if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
-      else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
+      this.resetCam();
       this.input.aim = null;
-      this.camGoal = null;
       this.speed = 1; $('btnSpeed').textContent = '×1';
       $('hud').classList.remove('hidden');
       showScr(null);
@@ -208,6 +206,68 @@
       this.endShown = false;
       this.tutorial = store.get('tutDone-' + this.side, false) ? null : { step: 0, t: 0 };
       this.startTutorial();
+    },
+
+    // ---------- מקלדת בתפריטים ובמסכים ----------
+    // רץ לפני מקשי המשחק (שלב הלכידה): מה שמטופל כאן לא מגיע למשחק
+    wireMenuKeys() {
+      this.menuRow = 0;
+      const vis = (id) => !$(id).classList.contains('hidden');
+      const take = (e) => { e.preventDefault(); e.stopPropagation(); };
+      root.addEventListener('keydown', (e) => {
+        const t = e.target;
+        if (t && t.tagName === 'INPUT' && t.type === 'range' && e.code.startsWith('Arrow')) return;   // המחוון מקבל את החיצים
+        if (vis('howto')) { if (['Escape', 'Enter', 'F1', 'KeyH', 'Space'].includes(e.code)) { take(e); $('btnHowBack').click(); } return; }
+        if (vis('settings')) { if (e.code === 'Escape') { take(e); $('btnSetBack').click(); } return; }
+        if (vis('end')) {
+          if (e.code === 'Enter' || e.code === 'Space') { take(e); $('btnAgain').click(); }
+          else if (e.code === 'Escape') { take(e); $('btnEndMenu').click(); }
+          return;
+        }
+        if (vis('pause')) {
+          if (e.code === 'KeyR') { take(e); $('btnRestart').click(); }
+          else if (e.code === 'KeyQ') { take(e); $('btnQuit').click(); }
+          else if (e.code === 'KeyH' || e.code === 'F1') { take(e); $('btnPauseHow').click(); }
+          return;   // רווח / P / Esc — ממשיכים לשחק (מטופל במקשי המשחק)
+        }
+        if (vis('menu')) {
+          const rows = ['sideSeg', 'mapSeg', 'diffSeg'];
+          const onBtn = document.activeElement && document.activeElement.tagName === 'BUTTON';
+          if (e.code === 'Enter' && !onBtn) { take(e); $('btnStart').click(); return; }
+          if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+            take(e);
+            this.menuRow = (this.menuRow + (e.code === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
+            this.showMenuRow();
+            return;
+          }
+          if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+            take(e);
+            const btns = [...$(rows[this.menuRow]).querySelectorAll('.segBtn')].filter(b => !b.disabled);
+            if (!btns.length) return;
+            let i = btns.findIndex(b => b.classList.contains('active'));
+            // מימין לשמאל: האפשרות הראשונה בצד ימין, ולכן שמאלה = הבאה
+            i = (Math.max(0, i) + (e.code === 'ArrowLeft' ? 1 : btns.length - 1)) % btns.length;
+            btns[i].click();
+            this.showMenuRow();
+            return;
+          }
+          if (e.code === 'KeyH' || e.code === 'F1') { take(e); $('btnHow').click(); }
+        }
+      }, true);
+    },
+    showMenuRow() { ['sideSeg', 'mapSeg', 'diffSeg'].forEach((id, k) => $(id).classList.toggle('kbd', k === this.menuRow)); },
+    // עזרה באמצע משחק: עוצרים ומראים את מסך ההסבר
+    showHelp() {
+      if (this.mode === 'play' && !(this.world && this.world.outcome)) this.togglePause();
+      if (this.mode !== 'paused') return;
+      this.howReturn = 'pause';
+      showScr('howto');
+    },
+    resetCam() {
+      const cam = this.stage.cam;
+      this.camGoal = null;
+      if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
+      else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
     },
 
     newQuote() { $('menuQuote').textContent = HM.TXT.pickNot(HM.TXT.QUOTES, $('menuQuote').textContent); },

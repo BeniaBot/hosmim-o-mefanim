@@ -325,6 +325,9 @@
         return;
       }
       if (g.mode !== 'play') return;
+      if (e.code === 'F1' || e.code === 'KeyH') { e.preventDefault(); g.showHelp(); return; }
+      if (e.code === 'KeyT') { g.toggleSpeed(); return; }
+      if (e.code === 'Home') { g.resetCam(); return; }
       if (e.code === 'KeyM') { g.toggleMute(); return; }
       if (e.code === 'Tab') { e.preventDefault(); this.cycleSelect(); return; }
       if (e.code.startsWith('Digit')) {

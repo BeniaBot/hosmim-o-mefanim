@@ -41,8 +41,20 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.click('#btnSetBack');
   check('settings back', await visible('menu'));
 
-  // ---- התחלה ----
-  await p.click('#btnStart');
+  // ---- מקלדת בתפריט ----
+  await p.keyboard.press('ArrowDown'); await p.keyboard.press('ArrowDown');
+  check('arrow keys move the menu row focus', await ev(() => document.getElementById('diffSeg').classList.contains('kbd')));
+  await p.keyboard.press('ArrowLeft');
+  check('arrow left changes the difficulty', (await p.textContent('#startSum')).includes('קשה'), await p.textContent('#startSum'));
+  await p.keyboard.press('ArrowRight');
+  check('arrow right changes it back', (await p.textContent('#startSum')).includes('רגיל'), await p.textContent('#startSum'));
+  await p.keyboard.press('KeyH');
+  check('H opens how-to from the menu', await visible('howto'));
+  await p.keyboard.press('Escape');
+  check('Esc closes how-to', await visible('menu'));
+
+  // ---- התחלה (Enter) ----
+  await p.keyboard.press('Enter');
   await p.waitForTimeout(800);
   check('start shows HUD', await visible('hud'));
   check('game mode is play', (await ev(() => HM.Game.mode)) === 'play');
@@ -100,6 +112,15 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   // ---- גרירת מלבן ----
   await p.keyboard.press('Escape');
   check('Esc clears selection (not pause)', (await ev(() => HM.Game.input.selected.size)) === 0 && (await ev(() => HM.Game.mode)) === 'play');
+  await p.keyboard.press('KeyH');
+  check('H in game pauses and opens how-to', await visible('howto') && (await ev(() => HM.Game.mode)) === 'paused');
+  await p.keyboard.press('Escape');
+  check('Esc from in-game how-to returns to the pause screen', await visible('pause'));
+  await p.keyboard.press('Escape');
+  check('Esc on the pause screen resumes', (await ev(() => HM.Game.mode)) === 'play');
+  await p.keyboard.press('KeyT');
+  check('T toggles double speed', (await ev(() => HM.Game.speed)) === 2);
+  await p.keyboard.press('KeyT');
   // הרשימה (כשאין בחירה) מתעדכנת כשנוספת חוליה
   const newNum = await ev(() => { const w = HM.Game.world; w.money.protest += 500; const before = new Set(w.squads.map(s => s.id)); w.cmd('protest', { type: 'buy', unit: 'bochurim' }); const s = w.squads.find(q => !before.has(q.id)); return s ? s.num : null; });
   await p.waitForFunction((n) => [...document.querySelectorAll('#selEmpty .rosterChip .num')].some(e => +e.textContent === n), newNum, { timeout: 4000 }).catch(() => {});
@@ -188,7 +209,8 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   check('no pause after the game is decided', !(await visible('pause')));
   await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 8000 }).catch(() => {});
   check('end screen still arrives after Esc', await visible('end'));
-  await p.click('#btnAgain');
+  await p.keyboard.press('Enter');
+  check('Enter on the end screen starts another game', (await ev(() => HM.Game.mode)) === 'play' && !(await visible('end')));
   await p.waitForTimeout(400);
   await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
   await p.waitForTimeout(150);

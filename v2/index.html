@@ -56,6 +56,7 @@
     </div>
     <button class="bigBtn" id="btnStart">התחילו</button>
     <div class="startSum" id="startSum"></div>
+    <div class="kbdLine">במקלדת: <b>↑ ↓</b> בוחרים שורה · <b>← →</b> משנים בחירה · <b>Enter</b> מתחילים · <b>H</b> איך משחקים</div>
     <div class="menuLinks">
       <button class="link" id="btnHow">איך משחקים</button>
       <button class="link" id="btnSettings">הגדרות</button>
@@ -89,14 +90,18 @@
       <tr><td>עכבר ימני</td><td>שליחה (כמו שמאלי) · גרירה = הזזת המצלמה</td></tr>
       <tr><td>גלגלת / ‎+ −</td><td>התקרבות והתרחקות</td></tr>
       <tr><td>חיצים / W A S D</td><td>הזזת המצלמה · Q / E סיבוב</td></tr>
-      <tr><td>1–9</td><td>בחירת חוליה לפי המספר שלה</td></tr>
+      <tr><td>1–9</td><td>בחירת חוליה לפי המספר שלה · פעמיים = המצלמה עוברת אליה</td></tr>
+      <tr><td>Tab · Ctrl+A</td><td>החוליה הבאה · לבחור את כל החוליות</td></tr>
+      <tr><td>Shift + לחיצה</td><td>להוסיף חוליה לבחירה</td></tr>
       <tr><td>S</td><td>לשבת / לקום</td></tr>
       <tr><td>F</td><td>"יש לי אישור!" (עסקן)</td></tr>
       <tr><td>Z X C B N V</td><td>מפגינים: בחורים · אברכים · עסקן · צלם · הסעה · שופר<br>משטרה: שוטרים · פרשים · מכת"זית · יס"מ · קצין קישור · כריזה</td></tr>
       <tr><td>R · G</td><td>משטרה: מכת"זית חוזרת למלא מים · חוליה יורדת למדרכה</td></tr>
-      <tr><td>רווח / P / Esc</td><td>הפסקה</td></tr>
+      <tr><td>רווח / P / Esc</td><td>הפסקה (Esc קודם מבטל בחירה)</td></tr>
+      <tr><td>T · M · Home</td><td>מהירות כפולה · קול · מצלמה חוזרת למרכז הצומת</td></tr>
+      <tr><td>H / F1</td><td>המסך הזה, באמצע משחק</td></tr>
     </table>
-    <button class="bigBtn" id="btnHowBack">הבנתי</button>
+    <button class="bigBtn" id="btnHowBack">הבנתי <span class="kbdHint">Esc</span></button>
   </div>
 </div>
 
@@ -116,7 +121,7 @@
     </div>
     <div class="setNote" id="qualNote">שינוי איכות טוען את המשחק מחדש.</div>
     <div class="setRow"><span>לפתוח את כל המפות (בלי לנצח קודם)</span><input type="checkbox" id="unlockAll"></div>
-    <button class="bigBtn" id="btnSetBack">חזרה</button>
+    <button class="bigBtn" id="btnSetBack">חזרה <span class="kbdHint">Esc</span></button>
   </div>
 </div>
 
@@ -141,7 +146,7 @@
     </div>
     <div id="ctrlBox">
       <button class="iconBtn" id="btnPause" title="הפסקה (רווח)">❚❚</button>
-      <button class="iconBtn" id="btnSpeed" title="מהירות המשחק">×1</button>
+      <button class="iconBtn" id="btnSpeed" title="מהירות המשחק (T)">×1</button>
       <button class="iconBtn" id="btnMute" title="קול (M)">♪</button>
     </div>
   </div>
@@ -187,10 +192,10 @@
   <div class="paper small">
     <div class="masthead mid">הפסקה</div>
     <div class="rule"></div>
-    <button class="bigBtn" id="btnResume">המשך לשחק</button>
-    <button class="bigBtn sec" id="btnRestart">התחל את המשחק מחדש</button>
-    <button class="bigBtn sec" id="btnPauseHow">איך משחקים</button>
-    <button class="bigBtn sec" id="btnQuit">יציאה לתפריט הראשי</button>
+    <button class="bigBtn" id="btnResume">המשך לשחק <span class="kbdHint">Esc</span></button>
+    <button class="bigBtn sec" id="btnRestart">התחל את המשחק מחדש <span class="kbdHint">R</span></button>
+    <button class="bigBtn sec" id="btnPauseHow">איך משחקים <span class="kbdHint">H</span></button>
+    <button class="bigBtn sec" id="btnQuit">יציאה לתפריט הראשי <span class="kbdHint">Q</span></button>
     <div class="setRow"><span>עוצמת קול</span><input type="range" id="volSlider2" min="0" max="100" value="70"></div>
   </div>
 </div>
@@ -207,8 +212,8 @@
     <div class="statGrid" id="endStats"></div>
     <div class="endFun" id="endFun"></div>
     <div class="endBtns">
-      <button class="bigBtn" id="btnAgain">משחק נוסף</button>
-      <button class="bigBtn sec" id="btnEndMenu">לתפריט הראשי</button>
+      <button class="bigBtn" id="btnAgain">משחק נוסף <span class="kbdHint">Enter</span></button>
+      <button class="bigBtn sec" id="btnEndMenu">לתפריט הראשי <span class="kbdHint">Esc</span></button>
     </div>
   </div>
 </div>

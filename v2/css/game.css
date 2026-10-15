@@ -231,3 +231,17 @@ button { font-family: inherit; cursor: pointer; }
 .endFun { margin-top: 10px; text-align: center; font-style: italic; color: #5a5040; font-size: 14.5px; }
 .endFun:empty { display: none; }
 .menuQuote { margin-top: 8px; text-align: center; font-style: italic; color: #7a705e; font-size: 13px; }
+
+/* רמזי מקלדת */
+.kbdHint { display: inline-block; margin-inline-start: 8px; padding: 0 6px; border: 1px solid currentColor; border-radius: 4px; font-size: 0.62em; font-weight: 700; opacity: 0.6; vertical-align: middle; line-height: 1.5; }
+.kbdLine { margin-top: 6px; text-align: center; font-size: 12.5px; color: #7a705e; }
+.kbdLine b { font-weight: 800; color: #4a4232; }
+.seg.kbd { outline: 2px dashed #b8902f; outline-offset: 4px; border-radius: 10px; }
+/* מסכים נמוכים (מחשב נייד 1366×768 ומטה): התפריט נכנס בלי גלילה */
+@media (max-height: 820px) {
+  .masthead { font-size: 46px; margin: 6px 0 6px; }
+  .dek { font-size: 16px; margin-bottom: 10px; }
+  .pick { margin: 8px 0; }
+  .version { margin-top: 4px; }
+  .menuQuote { margin-top: 4px; }
+}
