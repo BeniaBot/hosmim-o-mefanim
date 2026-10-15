@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- המשחק לא פונה לרשת בכלל: הכלל הזה חוסם כל בקשה החוצה -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data: blob:; font-src 'self' file: data:; media-src 'self' file: blob:; connect-src 'none'; object-src 'none'">
 <title>חוסמים או מפנים</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="stylesheet" href="fonts.css">
@@ -162,6 +164,16 @@
     </div>
   </div>
   <div id="selrect"></div>
+</div>
+
+<!-- ===== הגרפיקה נעצרה ===== -->
+<div id="glLost" class="scr hidden dim">
+  <div class="paper small">
+    <div class="masthead mid">הגרפיקה נעצרה</div>
+    <div class="rule"></div>
+    <div class="dek">כרטיס המסך הפסיק לצייר (זה קורה לפעמים אחרי שינה של המחשב או עדכון דרייבר). ההתקדמות שלכם שמורה.</div>
+    <button class="bigBtn" id="btnGlReload">לטעון את המשחק מחדש</button>
+  </div>
 </div>
 
 <!-- ===== הפסקה ===== -->

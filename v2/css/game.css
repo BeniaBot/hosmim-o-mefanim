@@ -37,8 +37,9 @@ button { font-family: inherit; cursor: pointer; }
 .rule { height: 5px; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink); margin: 6px 0 14px; }
 .dek { text-align: center; font-size: 18px; line-height: 1.5; color: var(--ink2); margin: 0 auto 16px; max-width: 560px; }
 .pick { margin: 12px 0; }
-.pickRow { display: flex; gap: 18px; flex-wrap: wrap; }
-.pickRow .pick { flex: 1 1 260px; }
+.pickRow { display: flex; flex-direction: column; gap: 0; }
+.pickRow .pick { flex: 1 1 auto; }
+#diffSeg .segBtn { padding: 7px 10px; }
 .pickLbl { font-weight: 700; font-size: 14px; color: var(--ink2); margin-bottom: 6px; }
 .seg { display: flex; gap: 8px; }
 .seg.mini .segBtn { padding: 6px 10px; }

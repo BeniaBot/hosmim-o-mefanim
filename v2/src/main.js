@@ -56,6 +56,16 @@
       this.minimap = new HM.Minimap(this);
       this.wireMenus();
       root.addEventListener('resize', () => this.stage.resize());
+      // אם כרטיס המסך מאבד את ההקשר — הודעה ברורה במקום מסך שחור
+      const cv = this.stage.renderer.domElement;
+      cv.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault();
+        this.glLost = true;
+        if (this.mode === 'play') this.mode = 'paused';
+        $('glLost').classList.remove('hidden');
+      });
+      cv.addEventListener('webglcontextrestored', () => { root.location.reload(); });
+      $('btnGlReload').onclick = () => root.location.reload();
       // ממתינים לגופנים לפני ציור שלטים
       const ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
       Promise.race([ready, new Promise(r => setTimeout(r, 1500))]).then(() => {
@@ -369,7 +379,7 @@
         setTimeout(() => this.showEnd(w.outcome), 1400);
       }
       this.adaptQuality(dtReal);
-      this.stage.render();
+      if (!this.glLost) this.stage.render();
     },
 
     // רזולוציה מסתגלת: אם המחשב מתקשה — מורידים מעט חדות
