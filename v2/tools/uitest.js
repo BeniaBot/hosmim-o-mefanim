@@ -38,6 +38,12 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   check('music checkbox turns music off', await ev(() => HM.Audio.musicOn === false && localStorage.getItem('hm2-music') === 'false'));
   await p.click('#musicOn');
   check('music checkbox turns music back on', await ev(() => HM.Audio.musicOn === true && !!HM.Audio.mus));
+  await p.click('#edgePan');
+  check('edge-pan checkbox turns edge scrolling off', await ev(() => HM.Game.input.edgePan === false && localStorage.getItem('hm2-edgePan') === 'false'));
+  await p.click('#edgePan');
+  await p.fill('#camSpeed', '150'); await p.dispatchEvent('#camSpeed', 'input');
+  check('camera speed slider', await ev(() => Math.abs(HM.Game.input.camSpeed - 1.5) < 0.01));
+  await p.fill('#camSpeed', '100'); await p.dispatchEvent('#camSpeed', 'input');
   await p.click('#btnSetBack');
   check('settings back', await visible('menu'));
 

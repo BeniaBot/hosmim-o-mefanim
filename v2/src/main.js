@@ -113,6 +113,13 @@
       $('btnHow').onclick = () => { showScr('howto'); };
       $('btnHowBack').onclick = () => { showScr(this.mode === 'paused' ? 'pause' : (this.howReturn || 'menu')); this.howReturn = null; };
       $('btnSettings').onclick = () => showScr('settings');
+      // מצלמה: מהירות, וגלילה בקצה המסך (יש שחקנים שזה מפריע להם)
+      this.input.camSpeed = store.get('camSpeed', 100) / 100;
+      this.input.edgePan = store.get('edgePan', true);
+      $('camSpeed').value = Math.round(this.input.camSpeed * 100);
+      $('camSpeed').oninput = (e) => { this.input.camSpeed = +e.target.value / 100; store.set('camSpeed', +e.target.value); };
+      $('edgePan').checked = this.input.edgePan;
+      $('edgePan').onchange = (e) => { this.input.edgePan = !!e.target.checked; store.set('edgePan', this.input.edgePan); };
       $('unlockAll').checked = store.get('unlockAll', false);
       $('unlockAll').onchange = (e) => { store.set('unlockAll', !!e.target.checked); this.updateMapButtons(); };
       $('btnSetBack').onclick = () => showScr('menu');

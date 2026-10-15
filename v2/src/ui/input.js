@@ -415,13 +415,13 @@
         if (K.has('ArrowUp') || K.has('KeyW')) pz -= 1;
         if (K.has('ArrowDown') || (K.has('KeyS') && !this.selected.size)) pz += 1;
         // גלילה בקצה המסך (רק במסך מלא / חלון ממוקד)
-        if (this.mouse.inside && this.mouse.moved > 30 && !this.drag && document.hasFocus()) {
+        if (this.edgePan !== false && this.mouse.inside && this.mouse.moved > 30 && !this.drag && document.hasFocus()) {
           const m = 4, st = g.stage;
           if (this.mouse.x <= m) px -= 1; else if (this.mouse.x >= st.w - m) px += 1;
           if (this.mouse.y <= m) pz -= 1; else if (this.mouse.y >= st.h - m) pz += 1;
         }
         if (px || pz) {
-          const sp = cam.dist * 1.1 * dt;
+          const sp = cam.dist * 1.1 * dt * (this.camSpeed || 1);
           const s = Math.sin(cam.yaw), c = Math.cos(cam.yaw);
           cam.tx += (px * c + pz * s) * sp;
           cam.tz += (-px * s + pz * c) * sp;
