@@ -53,9 +53,12 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.keyboard.press('Escape');
   check('Esc closes how-to', await visible('menu'));
 
-  // ---- התחלה (Enter) ----
+  // ---- התחלה (Enter) — העכבר נח בפינה: המצלמה לא אמורה "לברוח" לקצה ----
+  await p.mouse.move(1, 1);
   await p.keyboard.press('Enter');
-  await p.waitForTimeout(800);
+  await p.waitForTimeout(1500);
+  check('camera stays on the junction when the mouse rests at the screen edge', await ev(() => Math.abs(HM.Game.stage.cam.tx + 8) < 1 && Math.abs(HM.Game.stage.cam.tz - 13) < 1), await ev(() => [HM.Game.stage.cam.tx, HM.Game.stage.cam.tz]));
+  await p.mouse.move(683, 384);
   check('start shows HUD', await visible('hud'));
   check('game mode is play', (await ev(() => HM.Game.mode)) === 'play');
   check('difficulty passed to world', (await ev(() => HM.Game.world.difficulty)) === 'normal');

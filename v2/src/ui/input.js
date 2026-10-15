@@ -38,6 +38,7 @@
       this.selected.clear();
       this.targetSet.clear();
       this.drag = null;
+      this.mouse.moved = 0;   // גלילה בקצה רק אחרי שהעכבר באמת זז בתוך המשחק
     }
 
     get side() { return this.g.side; }
@@ -82,6 +83,7 @@
     }
 
     move(e) {
+      if (this.mouse.inside && this.g.mode === 'play') this.mouse.moved += Math.abs(e.clientX - this.mouse.x) + Math.abs(e.clientY - this.mouse.y);
       this.mouse.x = e.clientX; this.mouse.y = e.clientY;
       const d = this.drag;
       if (!d) return;
@@ -413,7 +415,7 @@
         if (K.has('ArrowUp') || K.has('KeyW')) pz -= 1;
         if (K.has('ArrowDown') || (K.has('KeyS') && !this.selected.size)) pz += 1;
         // גלילה בקצה המסך (רק במסך מלא / חלון ממוקד)
-        if (this.mouse.inside && !this.drag && document.hasFocus()) {
+        if (this.mouse.inside && this.mouse.moved > 30 && !this.drag && document.hasFocus()) {
           const m = 4, st = g.stage;
           if (this.mouse.x <= m) px -= 1; else if (this.mouse.x >= st.w - m) px += 1;
           if (this.mouse.y <= m) pz -= 1; else if (this.mouse.y >= st.h - m) pz += 1;

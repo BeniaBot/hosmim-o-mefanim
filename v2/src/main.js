@@ -267,7 +267,7 @@
       const cam = this.stage.cam;
       this.camGoal = null;
       if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
-      else { cam.tx = -7; cam.tz = 9; cam.dist = 74; cam.yaw = 0; cam.pitch = 0.98; }
+      else { cam.tx = -8; cam.tz = 13; cam.dist = 76; cam.yaw = 0; cam.pitch = 0.98; }   // החוליות בחצר הישיבה — לא מתחת ללוחות התחתונים
     },
 
     newQuote() { $('menuQuote').textContent = HM.TXT.pickNot(HM.TXT.QUOTES, $('menuQuote').textContent); },
