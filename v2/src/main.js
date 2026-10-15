@@ -42,6 +42,8 @@
 
     boot() {
       if (!root.THREE) { $('loadMsg').textContent = 'שגיאה: קובץ הגרפיקה לא נטען.'; return; }
+      $('loadMsg').textContent = HM.TXT.pick(HM.TXT.LOADING);
+      this.newQuote();
       try {
         this.stage = new HM.Stage($('c'), this.settings.quality);
       } catch (e) {
@@ -208,8 +210,11 @@
       this.startTutorial();
     },
 
+    newQuote() { $('menuQuote').textContent = HM.TXT.pickNot(HM.TXT.QUOTES, $('menuQuote').textContent); },
+
     toMenu() {
       clearTimeout(this.endTimer);
+      this.newQuote();
       this.tutorial = null;
       $('hud').classList.add('hidden');
       HM.Audio.stopAll();
@@ -320,6 +325,7 @@
       const txt = E[o.reason] || { title: win ? 'ניצחון' : 'הפסד', sub: '' };
       $('endTitle').textContent = txt.title;
       $('endSub').textContent = HM.TXT.fmt(Array.isArray(txt.sub) ? HM.TXT.pick(txt.sub) : txt.sub, { km: w.stats.jamPeak.toFixed(1), place: w.map.name, H: Math.floor(w.Hpeak) });
+      $('endFun').textContent = this.hud.honks > 20 ? HM.TXT.fmt(HM.TXT.pick(HM.TXT.END_FUN), { honks: U.fmtNum(this.hud.honks) }) : '';
       $('endPlace').textContent = w.map.name + ' · ' + U.fmtTime(w.t);
       $('endEdition').textContent = win ? 'מהדורה מיוחדת' : 'מהדורת ערב';
       let st = '';

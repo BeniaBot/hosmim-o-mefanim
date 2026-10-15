@@ -24,6 +24,10 @@
       this.hoverExplain = null;
       this.lastAlertKey = {};
       this.honkBubbleT = 0;
+      this.honks = 0;
+      this.tick = { q: [], t: 0, idle: 0, last: null };
+      this.chatT = 6;
+      this.gagT = 0;
       $('btnPause').onclick = () => game.togglePause();
       $('btnSpeed').onclick = () => game.toggleSpeed();
       $('btnMute').onclick = () => game.toggleMute();
@@ -42,6 +46,10 @@
       this.buildCards();
       $('news').innerHTML = '';
       $('alerts').innerHTML = '';
+      this.honks = 0;
+      this.tick = { q: [], t: 0, idle: 0, last: null };
+      $('tickText').textContent = '';
+      this.chatT = 6; this.gagT = 0;
       this.news(TX().fmt(TX().NEWS.start, { place: world.map.name }));
       const tip = world.map.def.tip && world.map.def.tip[side];
       if (tip) setTimeout(() => { if (this.w === world) this.alert(tip, 'info', 'flag', 'tip', 8000); }, 1200);
@@ -75,7 +83,7 @@
         const cost = free ? '' : (this.side === 'protest' ? this.w.BAL.protest[k].cost : this.w.BAL.police[k].cost);
         el.innerHTML = `<span class="ckey">${key}</span>${HM.ICONS[k].replace('class="ic"', 'class="cic"')}<span class="cname">${info.name}</span>` +
           `<span class="ccost">${cost ? '₪' + cost : 'חינם'}</span><span class="why"></span>`;
-        el.title = info.explain;
+        el.title = info.explain + (TX().FLAVOR[k] ? '\n\n' + TX().FLAVOR[k] : '');
         el.onmouseenter = () => { this.hoverExplain = info.name + ': ' + info.explain; };
         el.onmouseleave = () => { this.hoverExplain = null; };
         el.onclick = () => this.g.useCard(k);
@@ -92,6 +100,39 @@
       this.updateBadges();
       this.updateJamTags();
       this.updateBubbles(dt);
+      this.updateTicker(dt);
+      this.updateChatter(dt);
+    }
+
+    // ---------- שורת המבזקים ----------
+    // כל מבזק נשאר לפחות 6 שניות; כשאין חדשות — "מילוי" כמו בטלוויזיה
+    updateTicker(dt) {
+      const k = this.tick;
+      k.t -= dt;
+      k.idle += dt;
+      if (k.t > 0) return;
+      let next = k.q.shift();
+      if (!next && k.idle > 22 && this.w && !this.w.outcome) { next = TX().pickNot(TX().NEWS.filler, k.last); k.last = next; }
+      if (!next) return;
+      k.t = 6.5; k.idle = 0;
+      const el = $('tickText');
+      el.classList.add('fade');
+      setTimeout(() => { el.textContent = next; el.title = next; el.classList.remove('fade'); }, 300);
+    }
+
+    // ---------- פטפוט מפגינים שחוסמים ----------
+    updateChatter(dt) {
+      const w = this.w;
+      if (!w || w.outcome) return;
+      this.chatT -= dt;
+      if (this.gagT > 0) this.gagT -= dt;
+      if (this.chatT > 0) return;
+      this.chatT = 7 + Math.random() * 7;
+      const cand = w.squads.filter(s => s.side === 'protest' && !s.broken && s.members.length && !s.moving && w.map.isRoad(HM.Units.centroid(s).x, HM.Units.centroid(s).z));
+      if (!cand.length) return;
+      const s = cand[Math.floor(Math.random() * cand.length)];
+      const c = HM.Units.centroid(s);
+      this.bubble(TX().pick(TX().LINES.protest), c.x, c.z);
     }
 
     updateText() {
@@ -171,6 +212,7 @@
         c.why.textContent = why;
       }
       $('selExplain').textContent = this.hoverExplain || this.selExplainDefault || '';
+      $('selFlavor').textContent = this.hoverExplain ? '' : (this.flavorDefault || '');
       // מזרימים קהל לפי מספר המפגינים על הכביש
       let onRoad = 0;
       for (const p of w.people) if (p.side === 'protest' && (p.state === 'free' || p.state === 'held') && w.map.isRoad(p.x, p.z)) onRoad++;
@@ -304,6 +346,17 @@
     }
 
     // ---------- תוויות פקק בכניסות ----------
+    // הגבול העליון לתוויות על המסך: מתחת לפס העליון (נמדד פעם בשתי שניות)
+    topLimit() {
+      const now = performance.now();
+      if (!this._topT || now - this._topT > 2000) {
+        this._topT = now;
+        const r = $('topbar').getBoundingClientRect();
+        this._topY = Math.max(130, r.bottom + 18);
+      }
+      return this._topY;
+    }
+
     updateJamTags() {
       const w = this.w, st = this.g.stage;
       for (const k in w.map.arms) {
@@ -322,11 +375,12 @@
         if (!p) { el.style.display = 'none'; continue; }
         const m = 90;
         const cx = U.clamp(p.x, m, st.w - m);
-        let cy = U.clamp(p.y, 130, st.h - 240);   // מעל הלוחות התחתונים והרמז
+        const topY = this.topLimit();
+        let cy = U.clamp(p.y, topY, st.h - 240);   // מתחת לפס העליון, מעל הלוחות התחתונים והרמז
         if (cx < 250 && cy < 305) cy = 305;   // לא מעל המיני-מפה
         // חץ לכיוון הכניסה כשהיא מחוץ למסך
         let arrow = '';
-        if (p.x < m) arrow = '◄'; else if (p.x > st.w - m) arrow = '►'; else if (p.y < 130) arrow = '▲'; else if (p.y > st.h - 240) arrow = '▼';
+        if (p.x < m) arrow = '◄'; else if (p.x > st.w - m) arrow = '►'; else if (p.y < topY) arrow = '▲'; else if (p.y > st.h - 240) arrow = '▼';
         const txt = `פקק ${km.toFixed(1)} ק"מ · ${arm.name}`;
         const key = txt + arrow;
         if (el.dataset.k !== key) {
@@ -413,6 +467,7 @@
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, ms || 3600);
     }
     news(text) {
+      if (this.tick) { this.tick.q.push(text); if (this.tick.q.length > 4) this.tick.q.shift(); }
       const box = $('news');
       const el = document.createElement('div');
       el.className = 'newsItem';
@@ -494,7 +549,13 @@
             if (Math.random() < 0.12) this.bubble(TX().pick(L.copGrab), e.x, e.z, 'cop', 3.1);
             break;
           case 'dragged':
-            if (Math.random() < 0.35) this.bubble(TX().pick(L.dragged), e.x, e.z);
+            // לפעמים — צמד קטן בין המפגין לשוטר ("דודי?!")
+            if (this.gagT <= 0 && Math.random() < 0.12) {
+              this.gagT = 45;
+              const gag = TX().pick(L.gags), wNow = this.w;
+              this.bubble(gag[0], e.x, e.z, '', 2.9, true);
+              setTimeout(() => { if (this.w === wNow) this.bubble(gag[1], e.x + 1.2, e.z + 0.8, 'cop', 3.3, true); }, 1300);
+            } else if (Math.random() < 0.35) this.bubble(TX().pick(L.dragged), e.x, e.z);
             A.thud();
             break;
           case 'released':
@@ -542,6 +603,8 @@
             else if (e.reason === 'ambRespect') { this.news(N.ambRespect); this.floater('+' + e.amount + ' כבוד', e.x, e.z); }
             else if (e.reason === 'documented') {
               this.floaterSum('doc', e.amount, 'תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
+              const ph = w.squads.find(q => q.type === 'photographer' && q.members.length);
+              if (ph && Math.random() < 0.4) this.bubble(TX().pick(L.photo), ph.members[0].x, ph.members[0].z, '', 2.9);
               if (!this.newsDone.has('doc')) { this.newsDone.add('doc'); this.news(N.documented); }
             }
             break;
@@ -551,6 +614,7 @@
             if (e.side === mine) this.alert('כמעט! רכב בלם ברגע האחרון — היכנסו לכביש כשהרמזור אדום', 'warn', 'car', 'near');
             break;
           case 'honk': {
+            this.honks++;
             const tgt = this.g.stage.cam;
             const d = Math.hypot(e.x - tgt.tx, e.z - tgt.tz);
             if (d < 70) A.honk(1 - d / 80);
@@ -632,6 +696,7 @@
         $('selEmpty').classList.remove('hidden');
         $('selBody').classList.add('hidden');
         this.selExplainDefault = '';
+        this.flavorDefault = '';
         this.renderRoster();
         return;
       }
@@ -688,9 +753,14 @@
         const foot = sqs.filter(s => !s.vehicle);
         if (foot.length) add('לרדת למדרכה', 'G', 'החוליה עוזבת את מה שהיא עושה ועומדת על המדרכה הקרובה — שלא תחסום בעצמה את התנועה.', () => this.g.input.toSidewalk());
         this.selExplainDefault = sqs.length === 1 ? TX().POLICE_HELP[sqs[0].type] : 'לחיצה על חוליית מפגינים — כל הנבחרים מטפלים בה. לחיצה על המדרכה — מציבים שם.';
+        this.flavorDefault = sqs.length === 1 ? (TX().FLAVOR[sqs[0].type] || '') : '';
       } else {
         this.selExplainDefault = sqs.length === 1 ? TX().UNITS[sqs[0].type].explain : 'לחיצה על הכביש שולחת את כל החוליות הנבחרות — הן נפרסות זו לצד זו.';
+        this.flavorDefault = sqs.length === 1 ? (TX().FLAVOR[sqs[0].type] || '') : '';
       }
+      // מציגים מיד (ולא רק בעדכון הטקסט הבא)
+      $('selExplain').textContent = this.hoverExplain || this.selExplainDefault || '';
+      $('selFlavor').textContent = this.hoverExplain ? '' : (this.flavorDefault || '');
     }
   }
 

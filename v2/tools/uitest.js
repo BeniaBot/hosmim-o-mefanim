@@ -69,6 +69,8 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.waitForTimeout(200);
   check('click on badge selects squad', (await ev(() => HM.Game.input.selected.size)) === 1);
   check('selection panel shows the squad', await visible('selBody'));
+  check('selected squad shows a flavor line', (await p.textContent('#selFlavor')).length > 5, await p.textContent('#selFlavor'));
+  check('news ticker shows the opening headline', (await p.textContent('#tickText')).length > 5 || (await ev(() => HM.Game.hud.tick.q.length)) > 0);
 
   // ---- שליחה לכביש ----
   const road = await ev(() => HM.Game.hud.project(-30, 0, 2.5));
