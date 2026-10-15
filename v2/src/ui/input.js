@@ -53,9 +53,10 @@
     }
 
     // החוליה הקרובה לסמן (לפי מיקום האנשים על המסך)
-    pickSquad(sx, sy, sideFilter) {
+    pickSquad(sx, sy, sideFilter, radius) {
       const hud = this.g.hud;
-      let best = null, bd = 26 * 26;
+      const r = radius || 26;
+      let best = null, bd = r * r;
       for (const sq of this.w.squads) {
         if (sideFilter && sq.side !== sideFilter) continue;
         if (sq.broken) continue;
@@ -142,7 +143,9 @@
         if (gp) this.fireAim(gp.x, gp.z); else this.aim = null;
         return;
       }
-      const own = this.pickSquad(sx, sy, this.side);
+      // כשכבר יש בחירה, לחיצה ליד החוליות שלכם היא בדרך כלל פקודה ("קדימה לכביש") —
+      // בוחרים חוליה אחרת רק בלחיצה ממש עליה (או על השלט שלה)
+      const own = this.pickSquad(sx, sy, this.side, this.selected.size ? 10 : 26);
       if (own) { this.selectClick(own, additive); return; }
       if (this.selected.size) { this.command(sx, sy); return; }
       // לחיצה על מקום ריק בלי בחירה — רמז

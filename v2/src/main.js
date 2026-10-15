@@ -176,6 +176,9 @@
       if (this.view) this.view.dispose();
       this.world = world;
       this.view = new HM.View(this.stage, world);
+      // מכינים מראש את כל תוכניות הציור (גם של דברים שעוד מוסתרים — מים, אמבולנס, עיגולים),
+      // כדי שהכנה ראשונה בכרטיס המסך לא תיתקע באמצע משחק
+      try { this.stage.renderer.compile(this.stage.scene, this.stage.camera); } catch (e) { /* לא קריטי */ }
       this.input.bind(world);
       this.acc = 0;
     },

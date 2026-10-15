@@ -78,6 +78,11 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.mouse.click(road.x, road.y);
   const goal = await ev(() => { const s = HM.Game.world.squadById([...HM.Game.input.selected][0]); return s.goal; });
   check('click on road sends squad there', Math.abs(goal.x + 30) < 2 && Math.abs(goal.z - 2.5) < 4, goal);
+  // לחיצה קרובה לחוליות שלכם (כשיש בחירה) היא פקודה, לא בחירה מחדש
+  const near = await ev(() => { const G = HM.Game, w = G.world; const s = w.squadById([...G.input.selected][0]); const other = w.squads.find(q => q.side === 'protest' && q !== s && q.members.length); const c = HM.Units.centroid(other); const t = { x: c.x + 4.5, z: c.z }; const sp = G.hud.project(t.x, 0, t.z); return { id: s.id, t, sx: sp.x, sy: sp.y }; });
+  await p.mouse.click(near.sx, near.sy);
+  const goal2 = await ev((id) => HM.Game.world.squadById(id).goal, near.id);
+  check('click next to another own squad still moves the selection', (await ev(() => [...HM.Game.input.selected].length)) === 1 && Math.hypot(goal2.x - near.t.x, goal2.z - near.t.z) < 3, { goal2, want: near.t });
   await ff(15);
 
   // ---- לשבת ----
