@@ -109,7 +109,7 @@
       if (w.Hrate > 0.005) {
         const perMin = w.Hrate * 60;
         const eta = (100 - w.H) / w.Hrate;
-        r.textContent = `▲ ${perMin.toFixed(perMin < 10 ? 1 : 0)} לדקה` + (eta < w.sunset - w.t ? ` · בקצב הזה: ${pol ? 'הפסד' : 'ניצחון'} בעוד ${U.fmtTime(eta)}` : '');
+        r.textContent = `▲ ${perMin.toFixed(perMin < 10 ? 1 : 0)} לדקה` + (eta < w.sunset - w.t && w.H < 99.5 ? ` · בקצב הזה: ${pol ? 'הפסד' : 'ניצחון'} בעוד ${U.fmtTime(eta)}` : '');
         r.className = pol ? 'down' : 'up';
       } else if (w.Hrate < -0.02 && w.H > 0) { r.textContent = '▼ יורד — אין פקק'; r.className = pol ? 'up' : 'down'; }
       else { r.textContent = ''; r.className = ''; }

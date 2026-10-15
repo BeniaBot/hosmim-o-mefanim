@@ -9,8 +9,8 @@
   const KEYS = [
     { f: 0.0, el: 46, sun: 0xfff3df, si: 1.25, sky: 0x86b6e2, hor: 0xd9e7f0, gnd: 0xc9b99c, hi: 0.62, fog: 0xd6e2ea },
     { f: 0.55, el: 28, sun: 0xffe7c2, si: 1.15, sky: 0x7aa8d8, hor: 0xe8e0cf, gnd: 0xc4b294, hi: 0.58, fog: 0xe0ddd0 },
-    { f: 0.82, el: 12, sun: 0xffc488, si: 0.95, sky: 0x6b8fc4, hor: 0xf3c493, gnd: 0xb59a7c, hi: 0.5, fog: 0xe8c9a6 },
-    { f: 1.0, el: 3, sun: 0xff8f55, si: 0.7, sky: 0x4a5d92, hor: 0xf59a68, gnd: 0x8f705e, hi: 0.42, fog: 0xd99a7a }
+    { f: 0.82, el: 12, sun: 0xffc488, si: 1.0, sky: 0x7495c8, hor: 0xf3c493, gnd: 0xbea284, hi: 0.58, fog: 0xe8c9a6 },
+    { f: 1.0, el: 4, sun: 0xff9a5e, si: 0.85, sky: 0x5a6da0, hor: 0xf5a26f, gnd: 0xa08068, hi: 0.54, fog: 0xd99a7a }
   ];
   const _ca = new T.Color(), _cb = new T.Color();
   function mixHex(a, b, t, out) { _ca.setHex(a); _cb.setHex(b); out.copy(_ca).lerp(_cb, t); return out; }
