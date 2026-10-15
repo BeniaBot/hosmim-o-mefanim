@@ -135,6 +135,8 @@
       $('btnPauseHow').onclick = () => { this.howReturn = 'pause'; showScr('howto'); };
       // כפתור שנלחץ לא נשאר "בפוקוס" — אחרת רווח/Enter ילחצו עליו שוב
       document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+      // חלון ממוזער / לשונית אחרת — עוצרים את המשחק (שלא ימשיך בלי השחקן)
+      document.addEventListener('visibilitychange', () => { if (document.hidden && this.mode === 'play' && !this.demo && this.world && !this.world.outcome) this.togglePause(); });
       root.addEventListener('keyup', (e) => { if (e.code === 'Space') e.preventDefault(); });
       $('btnAgain').onclick = () => this.startGame();
       $('btnEndMenu').onclick = () => this.toMenu();
@@ -235,7 +237,9 @@
           if (e.code === 'KeyR') { take(e); $('btnRestart').click(); }
           else if (e.code === 'KeyQ') { take(e); $('btnQuit').click(); }
           else if (e.code === 'KeyH' || e.code === 'F1') { take(e); $('btnPauseHow').click(); }
-          return;   // רווח / P / Esc — ממשיכים לשחק (מטופל במקשי המשחק)
+          // רווח / P / Esc — ממשיכים לשחק (גם כשהפוקוס על מחוון העוצמה; מקשי המשחק מתעלמים משדות קלט)
+          else if (t && t.tagName === 'INPUT' && (e.code === 'Escape' || e.code === 'Space' || e.code === 'KeyP')) { take(e); t.blur(); this.togglePause(); }
+          return;
         }
         if (vis('menu')) {
           const rows = ['sideSeg', 'mapSeg', 'diffSeg'];
@@ -466,9 +470,9 @@
       const alpha = running ? U.clamp(this.acc / DT, 0, 1) : 1;
       if (this.mode === 'menu') this.stage.cam.yaw += dtReal * 0.04;
       this.input.update(dtReal);
-      this.view.update(alpha, dtReal, { selected: this.demo ? null : this.input.selected, targetSet: this.input.targetSet });
+      this.view.update(alpha, dtReal, { selected: this.demo ? null : this.input.selected, targetSet: this.input.targetSet, paused: !running });
       this.stage.setDay(w.t / w.sunset);
-      if (!this.demo && this.mode !== 'menu') { this.hud.update(dtReal); this.minimap.update(dtReal); }
+      if (!this.demo && this.mode !== 'menu') { this.hud.update(dtReal, !running); this.minimap.update(dtReal); }
       if (this.mode === 'play') this.tickTutorial(dtReal);
       if (!this.demo && w.outcome && !this.endShown) {
         this.endShown = true;

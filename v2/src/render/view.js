@@ -207,7 +207,7 @@
         const sh = Math.sin(c.heading), ch = Math.cos(c.heading), off = c.wid / 2 + 0.45;
         const x = c.x - ch * off, z = c.z + sh * off;
         if (w.carAt(x, z, 0.35) || w.neighbors(x, z, 1).length) continue;
-        free.car = c; free.t = 10 + Math.random() * 8; free.said = false;
+        free.car = c; free.t = 10 + Math.random() * 8; free.said = false; free.x = free.z = undefined;   // המיקום יחושב בפריים הבא (לא ליד המכונית הקודמת)
         break;
       }
     }
@@ -831,6 +831,7 @@
 
     // ---------- עדכון לפריים ----------
     update(alpha, dtReal, ui) {
+      const gdt = ui && ui.paused ? 0 : dtReal;   // אנימציות של העולם (מוכר, נהגים, מים) קופאות בהשהיה
       const w = this.world;
       const counts = { bochur: 0, avrech: 0, askan: 0, photographer: 0, cop: 0, riot: 0, officer: 0, rider: 0 };
       let li = 0, bi = 0, hi = 0, ri = 0, ti = 0;
@@ -957,7 +958,7 @@
             if (need > 0) want -= Math.sign(lat || 1) * Math.min(need, 1.5);
           }
           const prev = nudge.get(c.id) || 0;
-          const cur = U.approach(prev, U.clamp(want, -1.5, 1.5), dtReal * 2.5);
+          const cur = U.approach(prev, U.clamp(want, -1.5, 1.5), gdt * 2.5);
           if (cur) { nudge.set(c.id, cur); x += ch * cur; z -= sh * cur; } else if (prev) nudge.delete(c.id);
         }
         const col = c.type === 'taxi' ? 0xf2c230 : (c.type === 'bus' || c.type === 'tram') ? 0xffffff : CAR_COLORS[c.color];
@@ -1029,21 +1030,21 @@
         this.cannonTurret.rotation.y = (V.aim !== undefined && V.state === 'spray' ? V.aim : V.heading) - V.heading;
         if (sel && sel.has(cs.id)) { setM(this.rings, ri++, x, 0.05, z, 0, 0, 0, 7); this.rings.count = ri; }
         if (tgtSet && tgtSet.has(cs.id)) { setM(this.tRings, ti++, x, 0.05, z, 0, 0, 0, 7); this.tRings.count = ti; }
-        this.updateWater(V, dtReal);
+        this.updateWater(V, gdt);
       } else {
         this.cannon.visible = false;
-        this.updateWater(null, dtReal);
+        this.updateWater(null, gdt);
       }
 
       // ---- ניידת העצורים ----
       const van = w.van;
       const vy = this.van;
       if (van.state === 'away') {
-        vy.position.x = U.approach(vy.position.x, this.vanHome.x + 60, dtReal * 9);
+        vy.position.x = U.approach(vy.position.x, this.vanHome.x + 60, gdt * 9);
         vy.visible = vy.position.x < this.vanHome.x + 58;
       } else {
         vy.visible = true;
-        vy.position.x = U.approach(vy.position.x, this.vanHome.x, dtReal * 9);
+        vy.position.x = U.approach(vy.position.x, this.vanHome.x, gdt * 9);
       }
 
       // ---- רמזורים ----
@@ -1067,8 +1068,8 @@
       this.pendBlue.count = pb; this.pendBlue.instanceMatrix.needsUpdate = true;
       this.pendGold.count = pg; this.pendGold.instanceMatrix.needsUpdate = true;
 
-      this.updateVendor(dtReal);
-      this.updateDriversOut(dtReal);
+      this.updateVendor(gdt);
+      this.updateDriversOut(gdt);
 
       // ---- סמן יעד ----
       if (this.markerT > 0) {

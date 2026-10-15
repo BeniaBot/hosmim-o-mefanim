@@ -22,6 +22,11 @@
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.startLoops();
       if (this.musicOn) this.startMusic();
+      // לשונית ברקע: הטיימרים מואטים והמוזיקה נשמעת קטועה — משתיקים עד שחוזרים
+      if (root.document) root.document.addEventListener('visibilitychange', () => {
+        if (!this.ctx) return;
+        if (root.document.hidden) this.ctx.suspend(); else this.ctx.resume();
+      });
     },
     setVolume(v) { this.vol = v; if (this.master && !this.muted) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05); },
     setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : this.vol, this.ctx.currentTime, 0.05); },
@@ -208,7 +213,14 @@
       else if (this.mus) { this.mus.g.gain.cancelScheduledValues(this.ctx.currentTime); this.mus.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2); }
     },
     // menu = רגוע (בלי ליווי מלא), game = רגיל, tense = מהר יותר (סוף המשחק)
-    setMood(m) { this.mood = m; },
+    setMood(m) {
+      // משחק חדש מתחיל בזמן ההנמכה של מסך הסיום — מחזירים את המוזיקה מיד
+      if (m !== this.mood && m !== 'menu' && this.mus && this.ctx) {
+        const g = this.mus.g.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t); g.setTargetAtTime(this.mus.level, t, 0.4);
+      }
+      this.mood = m;
+    },
     duckMusic(sec) {
       if (!this.mus || !this.musicOn) return;
       const g = this.mus.g.gain, t = this.ctx.currentTime;

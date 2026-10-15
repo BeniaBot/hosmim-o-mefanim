@@ -512,3 +512,53 @@ test('an askan next to the liaison officer does not spam "I have a permit"', () 
   run(w, 60, () => { for (const e of w.events.list) if (e.type === 'permitBlocked') blocked++; });
   assert.ok(blocked <= 4, 'permit blocked events in a minute: ' + blocked);
 });
+
+test('"sit" pressed while the squad is still walking: it sits when it reaches the road, not on the sidewalk', () => {
+  const w = newWorld();
+  const b = w.map.bases.protest;
+  const sq = placeSquad(w, 'protest', 'bochurim', b.rally.x, b.rally.z, false);
+  w.cmd('protest', { type: 'move', squads: [sq.id], x: -20, z: 0 });
+  run(w, 0.7);
+  assert.ok(sq.moving, 'still on the way');
+  w.cmd('protest', { type: 'stance', squads: [sq.id], stance: 'sit' });
+  run(w, 25);
+  const c = U.centroid(sq);
+  assert.ok(w.map.isRoad(c.x, c.z), 'reached the road');
+  assert.ok(U.squadSitting(sq), 'and sat down there');
+});
+
+test('water cannon obeys a plain move order (no target) and stays where it was sent', () => {
+  const w = newWorld();
+  const can = U.makeSquad(w, 'police', 'cannon', 30, -31);
+  w.cmd('police', { type: 'move', squads: [can.id], x: -20, z: -2 });
+  run(w, 40);
+  const V = can.vehicle;
+  assert.ok(Math.hypot(V.x - -20, V.z - -2) < 8, `drove to the spot (${V.x.toFixed(1)},${V.z.toFixed(1)})`);
+  run(w, 12);
+  assert.ok(Math.hypot(V.x - -20, V.z - -2) < 8, 'and did not drive home by itself');
+});
+
+test('a lone cop does not grab-and-release the same sitter forever', () => {
+  const w = newWorld({ seed: 4 });
+  const prot = placeSquad(w, 'protest', 'avrechim', -20, 0, true);
+  run(w, 3);
+  const pol = U.makeSquad(w, 'police', 'patrol', -14, 10);
+  pol.members.splice(1).forEach(c => { c.state = 'gone'; });
+  const cop = pol.members[0];
+  w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
+  const victims = new Set();
+  run(w, 60, () => { if (cop.victim) victims.add(cop.victim.id); });
+  assert.ok(victims.size >= 2, 'tries someone else after giving up: ' + victims.size);
+});
+
+test('on Kvish 4 an ambulance in the inner lane keeps off the median barrier', () => {
+  const w = new HM.World({ seed: 5, map: 'kvish4', protest: 'human', police: 'human', empty: true, ambulance: true });
+  w.amb.nextT = 1e9; w.amb.nextK = 1e9;
+  for (let k = 0; k < 30; k++) {
+    w.amb.spawn('amb');
+    const a = w.amb.list[w.amb.list.length - 1];
+    w.amb.place(a);
+    assert.ok(Math.abs(a.z) >= 1.5, `ambulance at z=${a.z.toFixed(2)} (barrier ±0.35)`);
+    w.amb.list.length = 0;
+  }
+});

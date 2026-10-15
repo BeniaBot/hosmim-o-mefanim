@@ -208,11 +208,8 @@
             const s = this.squadById(id);
             if (!s || s.side !== 'protest' || side !== 'protest' || s.broken || s.fleeT > 0) continue;
             if (s.type === 'askan') continue;
+            // חוליה בדרך: ממשיכה ליעד ומתיישבת כשהיא מגיעה (לא על המדרכה באמצע הדרך)
             s.stance = c.stance === 'sit' ? 'sit' : 'stand';
-            if (s.stance === 'sit' && s.moving) {
-              // מתיישבים במקום שבו הם נמצאים עכשיו
-              const ce = U2.centroid(s); U2.setGoal(this, s, ce.x, ce.z); s.stance = 'sit';
-            }
             n++;
           }
           return { ok: n > 0 };
@@ -325,6 +322,7 @@
           const V = s.vehicle;
           if (V.state === 'return' || V.state === 'refill') return;
           s.target = null;
+          V.parked = true;   // השחקן העמיד אותה כאן — לא חוזרת לתחנה לבד
           U2.vehicleGo(this, s, gx, gz);
           return;
         }

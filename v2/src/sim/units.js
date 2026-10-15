@@ -204,6 +204,7 @@
     }
     // לא עוברים דרך מכוניות — מחליקים לאורכן
     // squeezeT: מי שתקוע כבר כמה שניות נדחק צמוד לפח (בלי מרווח ביטחון)
+    if (p.squeezeT > 0) p.squeezeT -= dt;   // נספר כאן (לא רק ב-walkTo) — שלא יישאר "דחוק" לנצח במצב אחר
     const rr = p.squeezeT > 0 ? 0 : p.kind === 'rider' ? 0.9 : 0.25;
     // כבר צמודים למכונית: מותר לזוז, אבל לא להיכנס לתוך הגוף שלה. מי שבתוך גוף (נדיר) — יוצא חופשי
     const moving = nx !== p.x || nz !== p.z;
@@ -222,7 +223,9 @@
 
   // מסלול הליכה שעוקף מכוניות עומדות (מסמנים אותן זמנית כחסומות ברשת ההליכה).
   // בלי זה הולך ומכונית יכולים לחכות זה לזה לנצח: המכונית עוצרת בגללו, והוא רוצה לעבור דרכה.
-  function footPathAroundCars(world, ax, az, bx, bz) {
+  // thin: חוסמים רק תאים שמרכזם בתוך גוף המכונית — כשהפקק צפוף והחסימה המלאה סוגרת הכל,
+  // נשארים המעברים הצרים בין הנתיבים ובין הפגושים, כמו שאדם אמיתי עובר בפקק
+  function footPathAroundCars(world, ax, az, bx, bz, thin) {
     const foot = world.nav.foot, saved = [];
     for (const lane of world.traffic.lanes) {
       const L = lane.L;
@@ -230,6 +233,17 @@
         if (c.v > 1) continue;
         const mid = world.map.lanePos(L, c.d - c.len / 2);
         if ((mid.x - ax) * (mid.x - ax) + (mid.z - az) * (mid.z - az) > 40 * 40) continue;
+        if (thin) {
+          const ex = (L.axis === 'x' ? c.len : c.wid) / 2 - 0.1, ez = (L.axis === 'x' ? c.wid : c.len) / 2 - 0.1;
+          for (let i = foot.ci(mid.x - ex); i <= foot.ci(mid.x + ex); i++) for (let j = foot.cj(mid.z - ez); j <= foot.cj(mid.z + ez); j++) {
+            const cc = foot.center(i, j);
+            if (Math.abs(cc.x - mid.x) > ex || Math.abs(cc.z - mid.z) > ez) continue;
+            if ((cc.x - ax) * (cc.x - ax) + (cc.z - az) * (cc.z - az) < 1.4 * 1.4 || !foot.ok(i, j)) continue;
+            const k = j * foot.w + i;
+            foot.walk[k] = 0; saved.push(k);
+          }
+          continue;
+        }
         for (let s = 0; s <= c.len; s += 0.7) {
           const q = world.map.lanePos(L, c.d - s);
           // צפוף מספיק לרוחב (תא = 1 מ') — אחרת נשאר "מעבר" דרך אמצע אוטובוס
@@ -247,6 +261,8 @@
     const path = foot.path(ax, az, bx, bz);
     const found = foot.found;
     for (const k of saved) foot.walk[k] = 1;
+    if (!found && !thin) return footPathAroundCars(world, ax, az, bx, bz, true);
+    if (found && thin) path.thin = true;
     return found ? path : null;
   }
 
@@ -273,7 +289,7 @@
     const done = final && dLeft <= (stopDist || 0.12) + 0.6;
     // תקועים (מכונית / קיר / אנשים) — מחפשים מסלול חדש מסביב
     const dw = U.dist(p.x, p.z, wx, wz);
-    if (p.squeezeT > 0) p.squeezeT -= dt;
+    if (done) p.squeezeT = 0;
     if (p.bestD == null) p.bestD = dw;   // נקודת ביניים חדשה — מודדים ממנה (בלי לאפס את זמן התקיעה)
     else if (done || dw < p.bestD - 0.25) { p.bestD = dw; p.noProg = 0; p.stuckT = 0; }
     else {
@@ -283,7 +299,7 @@
         p.noProg = 0; p.bestD = null;
         const np = footPathAroundCars(world, p.x, p.z, tx, tz);
         p.path = np || foot.path(p.x, p.z, tx, tz); p.pathI = 0; p.pathT = 2.5; p.pathGoal = { x: tx, z: tz };
-        if (!np || p.stuckT > 4) p.squeezeT = 3;
+        if (!np || np.thin || p.stuckT > 4) p.squeezeT = 3;
       }
     }
     return done;
@@ -450,7 +466,8 @@
         const need = grabNeed(world, v);
         if (v.holders.length < need && v.claims.length < need) {
           p.waitT = (p.waitT || 0) + dt;
-          if (p.waitT > 2.5 + (p.id % 4) * 0.6) { p.waitT = 0; dropVictim(p); p.state = 'free'; break; }
+          // משחררים ולא חוזרים מיד לאותו יושב (אחרת תופסים-משחררים אותו לנצח)
+          if (p.waitT > 2.5 + (p.id % 4) * 0.6) { p.waitT = 0; p.avoidId = v.id; p.avoidUntil = world.t + 12; dropVictim(p); p.state = 'free'; break; }
         } else p.waitT = 0;
         p.vx = p.vz = 0;
         p.face = Math.atan2(v.x - p.x, v.z - p.z);
@@ -899,7 +916,8 @@
       case 'idle':
         V.v = 0;
         // מכת"זית שעומדת בלי משימה על הכביש — חוזרת לתחנה (ולא חוסמת את התנועה)
-        if (!sq.target && world.map.isRoad(V.x, V.z)) {
+        if (sq.target) V.parked = false;
+        if (!sq.target && !V.parked && world.map.isRoad(V.x, V.z)) {
           V.idleT = (V.idleT || 0) + dt;
           if (V.idleT > 6) { V.idleT = 0; vehicleGo(world, sq, base.x, base.z); V.state = 'return'; }
         } else V.idleT = 0;
@@ -911,7 +929,13 @@
         break;
       case 'drive': {
         const tgt = sq.target ? world.squadById(sq.target) : null;
-        if (!tgt || tgt.broken || !tgt.members.length) { V.state = 'idle'; sq.target = null; V.v = 0; break; }
+        if (!tgt) {
+          // פקודת תנועה בלי מטרה — נוסעים ליעד ועוצרים שם
+          if (sq.target) { sq.target = null; V.state = 'idle'; V.v = 0; break; }
+          if (driveVehicle(world, V, C.speed, dt)) { V.state = 'idle'; V.v = 0; }
+          break;
+        }
+        if (tgt.broken || !tgt.members.length) { V.state = 'idle'; sq.target = null; V.v = 0; break; }
         const arrived = driveVehicle(world, V, C.speed, dt);
         const tc = centroid(tgt);
         const d = U.dist(V.x, V.z, tc.x, tc.z);
@@ -1053,6 +1077,6 @@
     KIND, ON_STREET, makeSquad, makePerson, centroid, setGoal, refreshSlots, updateSquad, updatePerson,
     updateGrabs, updatePatrolSquad, updateHorseSquad, updateVan, deliverToVan, fleeSquad, hitMorale,
     breakSquad, usePermit, useShofar, squadSitting, isSitting, lineAxisAt, formationWidth, computeSlots,
-    dropVictim, vehicleGo, returnToGuard, updateOfficerSquad, DRAGGERS, centroidOf: centroid
+    dropVictim, vehicleGo, returnToGuard, updateOfficerSquad, DRAGGERS, centroidOf: centroid, footPathAroundCars
   };
 })(typeof window !== 'undefined' ? window : globalThis);

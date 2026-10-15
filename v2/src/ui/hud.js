@@ -46,7 +46,7 @@
       this.buildCards();
       $('news').innerHTML = '';
       $('alerts').innerHTML = '';
-      this.honks = 0;
+      this.honks = 0; this.nearN = 0; this.rosterKey = null;
       this.tick = { q: [], t: 0, idle: 0, last: null };
       $('tickText').textContent = '';
       this.chatT = 6; this.gagT = 0;
@@ -93,7 +93,7 @@
     }
 
     // ---------- עדכון ----------
-    update(dt) {
+    update(dt, paused) {
       if (!this.w) return;
       this.textT -= dt;
       if (this.textT <= 0) { this.textT = 0.1; this.updateText(); this.updateSelection(false); }
@@ -101,7 +101,7 @@
       this.updateJamTags();
       this.updateBubbles(dt);
       this.updateTicker(dt);
-      this.updateChatter(dt);
+      if (!paused) this.updateChatter(dt);   // בהשהיה — אף אחד לא מדבר
     }
 
     // ---------- שורת המבזקים ----------
@@ -117,7 +117,8 @@
       k.t = 6.5; k.idle = 0;
       const el = $('tickText');
       el.classList.add('fade');
-      setTimeout(() => { el.textContent = next; el.title = next; el.classList.remove('fade'); }, 300);
+      const tk = k;   // משחק חדש מחליף את this.tick — מבזק ישן לא נכתב לתוכו
+      setTimeout(() => { if (this.tick !== tk) return; el.textContent = next; el.title = next; el.classList.remove('fade'); }, 300);
     }
 
     // ---------- פטפוט מפגינים שחוסמים ----------
@@ -148,6 +149,16 @@
         }
       }
       const cand = w.squads.filter(s => s.side === 'protest' && !s.broken && s.members.length && !s.moving && w.map.isRoad(HM.Units.centroid(s).x, HM.Units.centroid(s).z));
+      // לפעמים (ותמיד כשאין מפגינים על הכביש) — נהג עומד, קרוב למצלמה, אומר משהו
+      if (!cand.length || Math.random() < 0.3) {
+        const cam = this.g.stage && this.g.stage.cam;
+        const near = w.traffic.cars.filter(c => c.v < 0.5 && c.type !== 'bus' && (!cam || Math.hypot(c.x - cam.tx, c.z - cam.tz) < 45));
+        if (near.length) {
+          const c = near[Math.floor(Math.random() * near.length)];
+          this.bubble(TX().pick(c.jammed ? TX().LINES.driver : TX().LINES.driverEarly), c.x, c.z, 'driver', 2.4);
+          return;
+        }
+      }
       if (!cand.length) return;
       const s = cand[Math.floor(Math.random() * cand.length)];
       const c = HM.Units.centroid(s);
@@ -255,7 +266,7 @@
       }
       if (sq.fleeT > 0) return S.fleeing;
       if (!sq.members.length) return S.away;
-      if (sq.moving) return S.moving;
+      if (sq.moving) return sq.stance === 'sit' ? S.movingToSit : S.moving;
       const sitting = sq.members.filter(p => p.sit > 0.7).length;
       const anySit = sq.members.some(p => p.sit > 0.05 && p.sit < 0.95);
       if (anySit) return sq.stance === 'sit' ? S.sittingDown : S.standingUp;
@@ -499,6 +510,7 @@
     // ---------- אירועים מהסימולציה ----------
     handleEvents(evs) {
       const w = this.w, L = TX().LINES, N = TX().NEWS, A = HM.Audio, mine = this.side;
+      const waveIn = evs.some(e => e.type === 'wave');
       for (const e of evs) {
         switch (e.type) {
           case 'incoming': {
@@ -515,9 +527,12 @@
               if (nm) this.alert(nm + ' — יוצאים מהתחנה', mine === 'protest' ? 'warn' : 'info', e.unit, 'arr' + e.unit);
               if (e.unit === 'horses') A.hooves();
             } else if (e.side === mine && w.t > 1) {
-              this.alert(`${TX().UNITS[e.unit].name} יוצאים מהישיבה`, 'good', e.unit, 'arrp' + e.squad);
-            } else if (e.side === 'protest' && mine === 'police' && w.t > 1) {
-              this.alert(`${TX().UNITS[e.unit].name} יוצאים מהישיבה — בדרך לצומת`, 'warn', e.unit, 'arrp');
+              const U = TX().UNITS[e.unit];
+              this.alert(U.arrive || U.name + ' בדרך', 'good', e.unit, 'arrp' + e.squad);
+            } else if (e.side === 'protest' && mine === 'police' && w.t > 1 && !waveIn) {
+              // בגל יחיד יוצאת התראה אחת מסכמת (ב-'wave') — לא התראה לכל חוליה
+              const U = TX().UNITS[e.unit];
+              this.alert((U.arrive || U.name + ' בדרך') + ' — בדרך לצומת', 'warn', e.unit, 'arrp');
             }
             break;
           case 'wave':
@@ -650,7 +665,8 @@
           case 'nearMiss':
             this.bubble(TX().pick(L.nearMiss), e.x, e.z);
             A.honk(1.4);
-            if (e.side === mine) this.alert('כמעט! רכב בלם ברגע האחרון — היכנסו לכביש כשהרמזור אדום', 'warn', 'car', 'near');
+            // ההסבר חשוב בפעמים הראשונות; אחר כך מספיקה הבועה והצפירה
+            if (e.side === mine && this.nearN++ < 3) this.alert('כמעט! רכב בלם ברגע האחרון — היכנסו לכביש כשהרמזור אדום', 'warn', 'car', 'near');
             break;
           case 'honk': {
             this.honks++;

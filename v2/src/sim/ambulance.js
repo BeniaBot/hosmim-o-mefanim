@@ -27,7 +27,8 @@
       const L = lane.L;
       const a = {
         id: w.nextId++, kind, L, d: 0, v: kind === 'kugel' ? this.K.speed : this.A.speed,
-        aiYield: kind !== 'kugel' || w.rng.next() < 0.35,   // מפגינים ממוחשבים מפנים לקוגל רק לפעמים (לאמבולנס — תמיד) x: L.p0.x, z: L.p0.z, px: L.p0.x, pz: L.p0.z,
+        aiYield: kind !== 'kugel' || w.rng.next() < 0.35,   // מפגינים ממוחשבים מפנים לקוגל רק לפעמים (לאמבולנס — תמיד)
+        x: L.p0.x, z: L.p0.z, px: L.p0.x, pz: L.p0.z,
         heading: Math.atan2(L.dx, L.dz), blockedT: 0, warned: false, penalized: false, blocker: null
       };
       this.place(a);
@@ -42,7 +43,12 @@
       const c = a.d - 2.8;
       const road = this.w.map.roads.find(r => r.id === L.road);
       const toward = road ? -Math.sign(L.off - road.c) || 1 : 1;
-      const side = toward * (this.w.BAL.traffic.laneW / 2);   // בדיוק על הקו בין הנתיבים (המכוניות זזות לו הצידה)
+      let side = toward * (this.w.BAL.traffic.laneW / 2);   // בדיוק על הקו בין הנתיבים (המכוניות זזות לו הצידה)
+      // בכביש עם שטח הפרדה — לא עולים על המעקה/המסילה
+      if (road && road.median) {
+        const minOff = road.median / 2 + 1.0, off = L.off + side - road.c;
+        if (Math.abs(off) < minOff) side = Math.sign(L.off - road.c) * minOff - (L.off - road.c);
+      }
       a.x = L.p0.x + L.dx * c + (L.axis === 'z' ? side : 0);
       a.z = L.p0.z + L.dz * c + (L.axis === 'x' ? side : 0);
     }
@@ -70,6 +76,7 @@
           const d = w.map.laneD(L, p.x, p.z) - a.d;
           if (d > -0.5 && d < gap) { gap = d; block = p; }
         }
+        a.byProtest = !!(block && block.side === 'protest' && gap < 5);   // נכון רק כרגע (לא "פעם נחסם")
         const K = this.K, kug = a.kind === 'kugel';
         let target = kug ? K.speed : A.speed;
         if (block && gap < 9) target = Math.max(0, (gap - 2.2) * 1.5);
@@ -125,7 +132,7 @@
     obstacles(out) {
       // רכב שתקוע מול מפגינים — המכוניות שמאחוריו תקועות בגלל ההפגנה (וזה נספר כפקק שלה)
       for (const a of this.list) {
-        const byProtest = a.blockedT > 0 && a.v < 0.5 && a.blocker && a.blocker.side === 'protest';
+        const byProtest = a.byProtest && a.v < 0.5;
         out.push({ x: a.x, z: a.z, r: 1.4, kind: byProtest ? 'protester' : 'ambulance', person: false, ref: null });
       }
     }
