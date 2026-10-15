@@ -480,7 +480,8 @@
       const km = this.traffic.jamKm;
       this.stats.jamPeak = Math.max(this.stats.jamPeak, km);
       let rate;
-      const mm = (Hb.mapMul && Hb.mapMul[this.map.id]) || 1;
+      // "קל": משטרה ממוחשבת סלחנית — גם הכותרות עולות קצת יותר מהר
+      const mm = ((Hb.mapMul && Hb.mapMul[this.map.id]) || 1) * ((this.ai.police && this.ai.police.cfg.headlineMul) || 1);
       if (km > Hb.deadzoneKm) rate = Math.min(Hb.maxRate, Hb.perKmSec * mm * (km - Hb.deadzoneKm));
       else rate = -Hb.decay;
       // רכבת קלה תקועה — תמונה שכל אתר חדשות רוצה

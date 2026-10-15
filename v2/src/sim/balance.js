@@ -123,7 +123,7 @@
     // ----- המשטרה הממוחשבת (כשהשחקן מפגין) -----
     policeAI: {
       normal: { think: 0.5, patrolAt: 40, horsesAt: 85, cannonAt: 150, incomeMul: 1.3, maxPatrols: 4 },
-      easy:   { think: 1.2, patrolAt: 60, horsesAt: 180, cannonAt: 300, incomeMul: 0.7, maxPatrols: 2 },
+      easy:   { think: 1.2, patrolAt: 60, horsesAt: 180, cannonAt: 300, incomeMul: 0.7, maxPatrols: 2, headlineMul: 1.3 },  // headlineMul: הכותרות עולות מהר יותר (בגשר שחקן מתחיל ניצח רק 7/12)
       // שחקן-משטרה ממוחשב בלי מגבלות זמן — משמש לכיוונון מצב המשטרה
       human:  { think: 0.6, patrolAt: 0, horsesAt: 0, cannonAt: 0, incomeMul: 1.0, maxPatrols: 5 },
       hard:   { think: 0.35, patrolAt: 28, horsesAt: 60, cannonAt: 110, incomeMul: 2.0, maxPatrols: 5 }
