@@ -266,7 +266,7 @@
     resetCam() {
       const cam = this.stage.cam;
       this.camGoal = null;
-      if (this.side === 'police') { cam.tx = 6; cam.tz = -4; cam.dist = 78; cam.yaw = 0; cam.pitch = 0.98; }
+      if (this.side === 'police') { cam.tx = 12; cam.tz = -13; cam.dist = 80; cam.yaw = 0; cam.pitch = 0.98; }   // גם התחנה וגם הצומת בתמונה
       else { cam.tx = -8; cam.tz = 13; cam.dist = 76; cam.yaw = 0; cam.pitch = 0.98; }   // החוליות בחצר הישיבה — לא מתחת ללוחות התחתונים
     },
 
