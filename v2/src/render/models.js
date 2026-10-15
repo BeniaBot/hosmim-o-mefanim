@@ -305,6 +305,22 @@
     return merge(p);
   }
 
+  // משאית הקוגל: משאית חלוקה עם קוגל ענק על הגג
+  function kugelTruck() {
+    const p = [], w = 2.0, L = 5.4, h = L / 2;
+    p.push(part(box(w, 1.6, L - 1.3), 0xf2e3c2, 0, 1.2, -0.6));            // ארגז
+    p.push(part(box(w, 1.05, 1.2), 0xd8892e, 0, 0.85, h - 0.6));             // תא נהג כתום
+    p.push(part(box(w - 0.12, 0.5, 0.06), GLASS, 0, 1.2, h - 0.02, -0.3));
+    p.push(part(box(w + 0.02, 0.3, L - 1.4), 0xd8892e, 0, 0.6, -0.6));       // פס
+    // הקוגל: עוגה עגולה וחומה, עם שכבה עליונה כהה ו"אדים"
+    p.push(part(cyl(0.85, 0.9, 0.55, 18), 0xb0702f, 0, 2.3, -0.6));
+    p.push(part(cyl(0.8, 0.85, 0.12, 18), 0x7a4a1c, 0, 2.62, -0.6));
+    for (const [sx, sz] of [[0.25, -0.4], [-0.3, -0.75], [0.05, -0.2]]) p.push(part(sph(0.12, 6, 5), 0xffffff, sx, 2.95, sz - 0.2, 0, 0, 0, 1, 1.6, 1));
+    lights(p, w, L, 0.7);
+    wheels(p, w, L, 0.37);
+    return merge(p);
+  }
+
   // רכבת קלה: גוף ארוך עם שלושה קרונות מחוברים
   function tram() {
     const p = [], W = 2.65, L = 30, H = 3.3;
@@ -473,7 +489,7 @@
   }
 
   HM.Models = {
-    vendor, driverOut,
+    vendor, driverOut, kugelTruck,
     lin, part, merge, box, cyl, sph, tram, ambulance,
     bochur, avrech, askan, photographer, riot, officer, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier

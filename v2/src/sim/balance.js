@@ -99,6 +99,8 @@
     // ----- אמבולנס -----
     ambulance: { first: [110, 160], every: [120, 175], speed: 13, warnAfter: 3, scandalAfter: 15,
                  scandalH: 10, scandalMorale: 12, respectH: 2 },
+    // ----- משאית הקוגל לישיבה: מי שמפנה לה דרך — כל ההפגנה מקבלת מורל -----
+    kugel: { first: [170, 240], every: [400, 500], speed: 9, warnAfter: 3, coldAfter: 18, morale: 25, money: 90, cheerH: 1 },
 
     // ----- סיום -----
     end: {

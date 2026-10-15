@@ -547,6 +547,24 @@
             else this.alert('המפגינים חוסמים אמבולנס — אם לא יפנו, זה יפגע בהם', 'info', 'ambulance', 'ambblk');
             this.bubble('תנו לעבור!', e.x, e.z, 'driver', 2.8, true);
             break;
+          case 'kugelIncoming':
+            this.alert(mine === 'protest' ? 'משאית קוגל בדרך לישיבה! פנו לה דרך — כל ההפגנה תקבל מורל, והמאפייה תתרום לקופה' : 'משאית קוגל בדרך לישיבה — אם יפנו לה דרך, המורל שלהם יעלה',
+              mine === 'protest' ? 'good' : 'info', 'car', 'kugin', 6000);
+            this.news(N.kugelIn);
+            break;
+          case 'kugelBlocked':
+            if (mine === 'protest') this.alert(`משאית הקוגל תקועה מול חוליה ${e.num}! פנו לה דרך לפני שהקוגל מתקרר`, 'warn', 'car', 'kugblk');
+            this.bubble(TX().pick(L.kugel), e.x, e.z, 'driver', 3.2, true);
+            break;
+          case 'kugelCold':
+            this.news(N.kugelCold);
+            this.bubble('הקוגל התקרר. אני מודיע למשגיח.', e.x, e.z, 'driver', 3.2, true);
+            if (mine === 'protest') this.alert('הקוגל התקרר — המורל לא יעלה הפעם', 'warn', 'car');
+            break;
+          case 'kugelDelivered':
+            this.news(N.kugelOk);
+            this.alert(mine === 'protest' ? `הקוגל הגיע חם! +${e.morale} מורל לכל ההפגנה, והמאפייה תרמה ₪${e.money}` : 'הקוגל הגיע לישיבה — המפגינים במורל גבוה', mine === 'protest' ? 'good' : 'warn', 'car', 'kugok');
+            break;
           case 'ambScandal':
             this.news(N.ambScandal);
             this.floater('−' + e.amount + ' כותרות', e.x, e.z, mine === 'protest' ? '#ff7b6b' : '#8be59e');
@@ -612,6 +630,7 @@
             else if (e.reason === 'askanArrest') { this.news(N.askanArrest); this.floater('+' + e.amount + ' כותרות', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
             else if (e.reason === 'photoArrest') { this.news(N.photoArrest); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
             else if (e.reason === 'ambRespect') { this.news(N.ambRespect); this.floater('+' + e.amount + ' כבוד', e.x, e.z); }
+            else if (e.reason === 'kugel') { this.floater('+' + e.amount + ' קוגל', e.x, e.z, '#ffd38a'); }
             else if (e.reason === 'documented') {
               this.floaterSum('doc', e.amount, 'תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
               const ph = w.squads.find(q => q.type === 'photographer' && q.members.length);

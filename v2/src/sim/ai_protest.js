@@ -81,7 +81,7 @@
       // ---- אמבולנס תקוע מאחורינו: מפנים דרך ----
       if (w.amb) {
         for (const a of w.amb.list) {
-          if (!a.warned || a.penalized || !a.blocker || a.blocker.side !== 'protest') continue;
+          if (!a.warned || a.penalized || a.cold || !a.aiYield || !a.blocker || a.blocker.side !== 'protest') continue;   // לקוגל מפנים רק לפעמים
           const s = a.blocker;
           if (s.broken || s.yieldT > w.t) continue;
           if (w.rng.next() > Math.max(0.5, cfg.react === undefined ? 1 : cfg.react)) continue;

@@ -10,11 +10,14 @@
     constructor(world) {
       this.w = world;
       this.A = world.BAL.ambulance;
+      this.K = world.BAL.kugel;
       this.list = [];
       this.nextT = world.rng.f(this.A.first[0], this.A.first[1]);
+      this.nextK = this.K ? world.rng.f(this.K.first[0], this.K.first[1]) : 1e9;
     }
 
-    spawn() {
+    spawn(kind) {
+      kind = kind || 'amb';
       const w = this.w;
       // מעדיפים נתיב שיש בו חסימה של ההפגנה — שם זה מעניין
       const lanes = w.traffic.lanes.filter(l => !l.L.tram);
@@ -23,13 +26,14 @@
       const lane = cand[Math.floor(w.rng.next() * cand.length)];
       const L = lane.L;
       const a = {
-        id: w.nextId++, L, d: 0, v: this.A.speed, x: L.p0.x, z: L.p0.z, px: L.p0.x, pz: L.p0.z,
+        id: w.nextId++, kind, L, d: 0, v: kind === 'kugel' ? this.K.speed : this.A.speed,
+        aiYield: kind !== 'kugel' || w.rng.next() < 0.35,   // מפגינים ממוחשבים מפנים לקוגל רק לפעמים (לאמבולנס — תמיד) x: L.p0.x, z: L.p0.z, px: L.p0.x, pz: L.p0.z,
         heading: Math.atan2(L.dx, L.dz), blockedT: 0, warned: false, penalized: false, blocker: null
       };
       this.place(a);
       a.px = a.x; a.pz = a.z;
       this.list.push(a);
-      w.events.push('ambIncoming', { x: a.x, z: a.z, arm: L.arm });
+      w.events.push(kind === 'kugel' ? 'kugelIncoming' : 'ambIncoming', { x: a.x, z: a.z, arm: L.arm });
     }
 
     // נוסע בין הנתיבים, לכיוון מרכז הכביש (כאילו המכוניות זזו לצד)
@@ -47,7 +51,11 @@
       const w = this.w, A = this.A;
       if (w.t >= this.nextT) {
         this.nextT = w.t + w.rng.f(A.every[0], A.every[1]);
-        this.spawn();
+        this.spawn('amb');
+      }
+      if (this.K && w.t >= this.nextK) {
+        this.nextK = w.t + w.rng.f(this.K.every[0], this.K.every[1]);
+        if (!this.list.some(o => o.kind === 'kugel')) this.spawn('kugel');
       }
       for (let i = this.list.length - 1; i >= 0; i--) {
         const a = this.list[i];
@@ -62,11 +70,32 @@
           const d = w.map.laneD(L, p.x, p.z) - a.d;
           if (d > -0.5 && d < gap) { gap = d; block = p; }
         }
-        let target = A.speed;
+        const K = this.K, kug = a.kind === 'kugel';
+        let target = kug ? K.speed : A.speed;
         if (block && gap < 9) target = Math.max(0, (gap - 2.2) * 1.5);
         a.v = U.approach(a.v, target, (target < a.v ? 12 : 3) * dt);
         a.d += a.v * dt;
         this.place(a);
+        // משאית הקוגל: חסומה — מזהירים, ואחרי זמן — הקוגל מתקרר. עברה בחום — מורל לכל ההפגנה
+        if (kug) {
+          if (block && block.side === 'protest' && a.v < 0.5 && gap < 5) {
+            a.blockedT += dt;
+            a.blocker = block.squad;
+            if (a.blockedT > K.warnAfter && !a.warned) { a.warned = true; w.events.push('kugelBlocked', { x: a.x, z: a.z, squad: block.squad.id, num: block.squad.num, limit: K.coldAfter }); }
+            if (a.blockedT > K.coldAfter && !a.cold) { a.cold = true; w.events.push('kugelCold', { x: a.x, z: a.z }); }
+          }
+          if (a.d > L.len + 6) {
+            if (!a.cold) {
+              for (const sq of w.squads) if (sq.side === 'protest' && !sq.broken) sq.morale = Math.min(sq.maxMorale, sq.morale + K.morale);
+              w.money.protest += K.money || 0;   // "תרומה מהמאפייה" על שפינו דרך
+              w.addHeadline(K.cheerH, 'kugel', a.x, a.z);
+              w.stats.kugel = (w.stats.kugel || 0) + 1;
+              w.events.push('kugelDelivered', { x: a.x, z: a.z, morale: K.morale, money: K.money || 0 });
+            }
+            this.list.splice(i, 1);
+          }
+          continue;
+        }
         // חסום ע"י מפגינים
         if (block && block.side === 'protest' && a.v < 0.5 && gap < 5) {
           a.blockedT += dt;
@@ -94,7 +123,11 @@
 
     // אמבולנס כמכשול לתנועה הרגילה (המכוניות לא נכנסות בו)
     obstacles(out) {
-      for (const a of this.list) out.push({ x: a.x, z: a.z, r: 1.4, kind: 'ambulance', person: false, ref: null });
+      // רכב שתקוע מול מפגינים — המכוניות שמאחוריו תקועות בגלל ההפגנה (וזה נספר כפקק שלה)
+      for (const a of this.list) {
+        const byProtest = a.blockedT > 0 && a.v < 0.5 && a.blocker && a.blocker.side === 'protest';
+        out.push({ x: a.x, z: a.z, r: 1.4, kind: byProtest ? 'protester' : 'ambulance', person: false, ref: null });
+      }
     }
   }
 

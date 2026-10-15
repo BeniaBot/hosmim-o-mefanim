@@ -461,3 +461,27 @@ test('cars wait before the crosswalk when someone stands just past it (crosswalk
   });
   assert.strictEqual(inside, 0, 'no stopped car on the crosswalk');
 });
+
+test('kugel truck: a clear road brings morale to the protest; blocking it too long lets the kugel go cold', () => {
+  // דרך פנויה — מורל
+  const w = new HM.World({ seed: 9, protest: 'human', police: 'human', empty: true, ambulance: true });
+  const sq = placeSquad(w, 'protest', 'bochurim', -25, 26);   // בחצר הישיבה, לא על הכביש
+  sq.morale = 40;
+  w.amb.nextT = 1e9; w.amb.nextK = 1;
+  let delivered = false;
+  run(w, 90, () => { for (const e of w.events.list) if (e.type === 'kugelDelivered') delivered = true; });
+  assert.ok(delivered, 'delivered');
+  assert.ok(sq.morale > 60, 'morale rose: ' + sq.morale);
+  // חסימה ממושכת — מתקרר
+  const w2 = new HM.World({ seed: 9, protest: 'human', police: 'human', empty: true, ambulance: true });
+  w2.amb.nextT = 1e9; w2.amb.nextK = 1;
+  run(w2, 1.2);
+  const k = w2.amb.list.find(a => a.kind === 'kugel');
+  assert.ok(k, 'truck spawned');
+  // חוליה יושבת בנתיב של המשאית, קצת לפניה
+  const L = k.L, p = w2.map.lanePos(L, Math.min(L.len - 20, k.d + 30));
+  placeSquad(w2, 'protest', 'avrechim', p.x, p.z, true);
+  let cold = false;
+  run(w2, 60, () => { for (const e of w2.events.list) if (e.type === 'kugelCold') cold = true; });
+  assert.ok(cold, 'kugel went cold');
+});

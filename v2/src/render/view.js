@@ -720,6 +720,8 @@
       R.add(this.cars.tram);
       this.ambMesh = inst(M.ambulance(), cm, 4, { shadow: true, color: true });   // חומר משותף עם מכוניות — חייב צבע מופע
       R.add(this.ambMesh);
+      this.kugelMesh = inst(M.kugelTruck(), cm, 2, { shadow: true, color: true });
+      R.add(this.kugelMesh);
       const lb = new T.BoxGeometry(0.5, 0.16, 0.3);
       this.ambRed = inst(lb, this.mat(new T.MeshBasicMaterial({ color: 0xff2a2a })), 4);
       this.ambBlue = inst(lb, this.mat(new T.MeshBasicMaterial({ color: 0x2a6bff })), 4);
@@ -996,11 +998,12 @@
       this.brakes.count = bri; this.brakes.instanceMatrix.needsUpdate = true;
 
       // ---- אמבולנסים ----
-      let ai = 0, ar = 0, ab = 0;
+      let ai = 0, ar = 0, ab = 0, ki = 0;
       if (w.amb) {
         const flash = Math.floor(now * 6) % 2 === 0;
         for (const a of w.amb.list) {
           const x = U.lerp(a.px, a.x, alpha), z = U.lerp(a.pz, a.z, alpha);
+          if (a.kind === 'kugel') { setM(this.kugelMesh, ki++, x, 0, z, a.heading, 0, 0, 1); continue; }
           setM(this.ambMesh, ai++, x, 0, z, a.heading, 0, 0, 1);
           const sx = Math.sin(a.heading), sz = Math.cos(a.heading), ox = Math.cos(a.heading) * 0.42, oz = -Math.sin(a.heading) * 0.42;
           const lx = x + sx * 1.6, lz = z + sz * 1.6;
@@ -1009,6 +1012,7 @@
         }
       }
       this.ambMesh.count = ai; this.ambMesh.instanceMatrix.needsUpdate = true;
+      this.kugelMesh.count = ki; this.kugelMesh.instanceMatrix.needsUpdate = true;
       this.ambRed.count = ar; this.ambRed.instanceMatrix.needsUpdate = true;
       this.ambBlue.count = ab; this.ambBlue.instanceMatrix.needsUpdate = true;
 
