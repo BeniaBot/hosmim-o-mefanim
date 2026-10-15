@@ -193,6 +193,7 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
   await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 8000 }).catch(() => {});
   check('reaching 100 shows a win end screen', await visible('end') && (await p.textContent('#endTitle')).includes('בכותרות'), await p.textContent('#endTitle'));
+  check('end screen awards a funny title', (await p.textContent('#endBadge')).length > 4, await p.textContent('#endBadge'));
   check('win shows stars', (await ev(() => document.querySelectorAll('#endStars .off').length)) < 3);
   await p.screenshot({ path: OUT + '/ui-win.png' });
   await p.click('#btnEndMenu');

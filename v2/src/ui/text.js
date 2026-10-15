@@ -200,6 +200,35 @@
     'בינתיים בפקק: {honks} צפירות ושלושה נהגים שהחליטו לעבור לגור בצומת.'
   ];
 
+  // "תואר היום" במסך הסיום — לפי מה שקרה במשחק (הכלל הראשון שמתאים)
+  function endBadge(side, o, S, honks, t) {
+    const km = S.jamPeak.toFixed(1);
+    const win = o.winner === side;
+    const rules = side === 'police' ? [
+      [S.scandals >= 2 && !win, 'כוכב הסרטונים ברשת — הדובר כבר מתאמן על "פעלנו במקצועיות"'],
+      [S.soaked >= 4, `שר המים — ${S.soaked} מקלחות בהפגנה אחת`],
+      [S.dragged >= 30, `מוביל דירות — ${S.dragged} פינויים, ואף כובע לא נשבר`],
+      [(S.permits || 0) >= 3, 'בודק אישורים ראשי — אף אחד מהם לא היה חתום'],
+      [win && o.reason === 'dispersed', 'הצומת זורם, הדוח קצר, והמפקד מחייך'],
+      [win && o.reason === 'sunset' && S.jamPeak < 1, 'שקט תעשייתי — המהדורה פתחה במזג האוויר'],
+      [win, 'מחזיק את הצומת — וגם את הסבלנות'],
+      [true, 'שוטר מן השורה — מחר עוד משמרת']
+    ] : [
+      [(S.ambBlocked || 0) > 0, '"אמבולנס? איזה אמבולנס?" — בפעם הבאה מפנים דרך'],
+      [win && t < 300, 'בזק — לכותרות לפני שהתה התקרר'],
+      [(S.permits || 0) >= 3, 'אלוף האישורים — אף אחד לא ראה אף אחד מהם'],
+      [S.soaked >= 3, `מכבסה ניידת — ${S.soaked} חוליות קיבלו מקלחת`],
+      [S.dragged >= 25, `לקוח קבוע של הניידת — ${S.dragged} גרירות`],
+      [S.jamPeak >= 3, `אדריכל הפקקים — ${km} ק"מ של יצירה`],
+      [honks >= 500, 'מנצח מקהלת הצפירות'],
+      [o.reason === 'dispersed', '"קמנו רק לשתות משהו"'],
+      [win, 'מפגין מן המניין — ומן הכותרות'],
+      [true, 'מפגין מן המניין']
+    ];
+    for (const [c, txt] of rules) if (c) return txt;
+    return '';
+  }
+
   const LOADING = ['מסדרים את הצומת…', 'מחממים את הקוגל…', 'מסבירים לנהגים שזה ייקח רק רגע…', 'מנפחים את הצמיגים של הניידת…',
     'מלמדים את הסוסים לא לדרוך על אף אחד…', 'ממלאים את המכת"זית…', 'מחפשים את האישור של העסקן…'];
 
@@ -219,5 +248,5 @@
   function fmt(s, vars) { return s.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] !== undefined) ? vars[k] : m); }
 
   HM.ICONS = ICONS;
-  HM.TXT = { UNITS, STATE, LINES, NEWS, END, END_FUN, FLAVOR, LOADING, QUOTES, POLICE_HELP, pick, pickNot, fmt };
+  HM.TXT = { UNITS, STATE, LINES, NEWS, END, END_FUN, FLAVOR, LOADING, QUOTES, POLICE_HELP, pick, pickNot, fmt, endBadge };
 })(typeof window !== 'undefined' ? window : globalThis);

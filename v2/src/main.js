@@ -385,6 +385,7 @@
       const txt = E[o.reason] || { title: win ? 'ניצחון' : 'הפסד', sub: '' };
       $('endTitle').textContent = txt.title;
       $('endSub').textContent = HM.TXT.fmt(Array.isArray(txt.sub) ? HM.TXT.pick(txt.sub) : txt.sub, { km: w.stats.jamPeak.toFixed(1), place: w.map.name, H: Math.floor(w.Hpeak) });
+      $('endBadge').textContent = HM.TXT.endBadge(this.side, o, w.stats, this.hud.honks, w.t);
       $('endFun').textContent = this.hud.honks > 20 ? HM.TXT.fmt(HM.TXT.pick(HM.TXT.END_FUN), { honks: U.fmtNum(this.hud.honks) }) : '';
       $('endPlace').textContent = w.map.name + ' · ' + U.fmtTime(w.t);
       $('endEdition').textContent = win ? 'מהדורה מיוחדת' : 'מהדורת ערב';
