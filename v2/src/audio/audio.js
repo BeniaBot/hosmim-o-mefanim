@@ -21,6 +21,7 @@
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.startLoops();
+      if (this.musicOn) this.startMusic();
     },
     setVolume(v) { this.vol = v; if (this.master && !this.muted) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05); },
     setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : this.vol, this.ctx.currentTime, 0.05); },
@@ -195,7 +196,114 @@
         o.start(t + i * 0.16); o.stop(t + i * 0.16 + 1.0);
       });
     },
-    stopAll() { this.setCrowd(0); this.setSpray(false); this.setHum(false); }
+    stopAll() { this.setCrowd(0); this.setSpray(false); this.setHum(false); },
+
+    // ---------- מוזיקת רקע: ניגון מקורי בסולם "פריגיש" (רה), מנוגן בזמן אמת ----------
+    // מנגינה: [מדרגה בסולם או null לשתיקה, אורך בשמיניות]. ארבע תיבות לכל משפט.
+    musicOn: true, mood: 'menu', mus: null,
+    setMusic(on) {
+      this.musicOn = on;
+      if (!this.ctx) return;
+      if (on) this.startMusic();
+      else if (this.mus) { this.mus.g.gain.cancelScheduledValues(this.ctx.currentTime); this.mus.g.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2); }
+    },
+    // menu = רגוע (בלי ליווי מלא), game = רגיל, tense = מהר יותר (סוף המשחק)
+    setMood(m) { this.mood = m; },
+    duckMusic(sec) {
+      if (!this.mus || !this.musicOn) return;
+      const g = this.mus.g.gain, t = this.ctx.currentTime;
+      g.cancelScheduledValues(t); g.setTargetAtTime(0, t, 0.1); g.setTargetAtTime(this.mus.level, t + sec, 1.2);
+    },
+    startMusic() {
+      if (!this.ctx) return;
+      if (!this.mus) {
+        const g = this.ctx.createGain(); g.gain.value = 0;
+        g.connect(this.master);
+        this.mus = { g, level: 0.7, step: 0, nextT: 0, timer: null };
+      }
+      const m = this.mus;
+      m.g.gain.setTargetAtTime(m.level, this.ctx.currentTime, 0.6);
+      if (!m.timer) m.timer = root.setInterval(() => this.schedMusic(), 60);
+    },
+    SONG: (function () {
+      // רה פריגיש: רה מיb פה# סול לה סיb דו רה
+      const A = [
+        [4, 1], [4, 1], [5, 1], [4, 1], [3, 2], [2, 2],
+        [2, 1], [3, 1], [2, 1], [1, 1], [0, 4],
+        [0, 1], [1, 1], [2, 1], [3, 1], [4, 2], [4, 2],
+        [4, 1], [3, 1], [2, 1], [1, 1], [2, 2], [0, 2]
+      ];
+      const B = [
+        [7, 2], [6, 1], [5, 1], [4, 2], [4, 2],
+        [5, 1], [6, 1], [5, 1], [4, 1], [3, 4],
+        [3, 1], [4, 1], [5, 1], [4, 1], [3, 1], [2, 1], [1, 1], [2, 1],
+        [0, 6], [null, 2]
+      ];
+      // אקורד לכל תיבה: [שורש בחצאי טונים מרה, סוג] — מז'ור/מינור
+      const chA = [[0, 'M'], [0, 'M'], [5, 'm'], [0, 'M']];
+      const chB = [[5, 'm'], [-2, 'm'], [1, 'M'], [0, 'M']];
+      const toSteps = (mel) => { const out = []; for (const [d, len] of mel) { out.push({ d, len }); for (let i = 1; i < len; i++) out.push(null); } return out; };
+      const a = toSteps(A), b = toSteps(B);
+      return { mel: a.concat(a, b, b), ch: chA.concat(chA, chB, chB) };
+    })(),
+    schedMusic() {
+      const c = this.ctx, m = this.mus;
+      if (!c || !m || !this.musicOn || this.muted || c.state !== 'running') { if (m) m.nextT = 0; return; }
+      const now = c.currentTime;
+      if (m.nextT < now - 0.05) m.nextT = now + 0.08;   // אחרי השהיה/לשונית ברקע — מתחילים מחדש מסודר
+      const bpm = this.mood === 'tense' ? 126 : this.mood === 'menu' ? 92 : 108;
+      const e8 = 30 / bpm;
+      const S = this.SONG, n = S.mel.length;
+      const SCALE = [0, 1, 4, 5, 7, 8, 10, 12, 13, 16];
+      const D4 = 293.66;
+      while (m.nextT < now + 0.25) {
+        const i = m.step % n, t = m.nextT;
+        const note = S.mel[i];
+        if (note && note.d !== null) this.musNote(D4 * Math.pow(2, SCALE[note.d] / 12), t, note.len * e8 * 0.92, 'lead');
+        // ליווי: באס בפעמה 1 ו-3, אקורד קצר ב-2 ו-4 ("אום-פה")
+        const bar = Math.floor(i / 8), inBar = i % 8;
+        const [root0, kind] = S.ch[bar];
+        if (inBar % 2 === 0) {
+          const beat = inBar / 2;
+          if (beat % 2 === 0) this.musNote(D4 / 4 * Math.pow(2, (root0 + (beat === 2 ? 7 : 0)) / 12), t, e8 * 1.6, 'bass');
+          else if (this.mood !== 'menu') {
+            const third = kind === 'M' ? 4 : 3;
+            for (const iv of [0, third, 7]) this.musNote(D4 / 2 * Math.pow(2, (root0 + iv) / 12), t, e8 * 0.7, 'pah');
+          }
+        }
+        m.step++;
+        m.nextT += e8;
+      }
+    },
+    musNote(f, t, dur, kind) {
+      const c = this.ctx;
+      const o = c.createOscillator(), g = c.createGain();
+      let out = g;
+      if (kind === 'lead') {
+        // קלרינט פשוט: גל מרובע מסונן + ויברטו עדין
+        o.type = 'square'; o.frequency.value = f;
+        const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1500; lp.Q.value = 0.6;
+        const vib = c.createOscillator(), vg = c.createGain();
+        vib.frequency.value = 5.2; vg.gain.value = f * 0.006;
+        vib.connect(vg); vg.connect(o.frequency);
+        vib.start(t); vib.stop(t + dur + 0.1);
+        o.connect(lp); lp.connect(g);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.035, t + 0.03);
+        g.gain.setValueAtTime(0.035, t + Math.max(0.04, dur - 0.06));
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.04);
+      } else if (kind === 'bass') {
+        o.type = 'triangle'; o.frequency.value = f;
+        o.connect(g);
+        this.env(g, t, 0.01, 0.07, dur);
+      } else {
+        o.type = 'triangle'; o.frequency.value = f;
+        o.connect(g);
+        this.env(g, t, 0.005, 0.016, dur);
+      }
+      out.connect(this.mus.g);
+      o.start(t); o.stop(t + dur + 0.1);
+    }
   };
 
   HM.Audio = A;

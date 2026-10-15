@@ -34,6 +34,10 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.fill('#volSlider', '40');
   await p.dispatchEvent('#volSlider', 'input');
   check('volume slider sets volume', await ev(() => Math.abs(HM.Audio.vol - 0.4) < 0.01));
+  await p.click('#musicOn');
+  check('music checkbox turns music off', await ev(() => HM.Audio.musicOn === false && localStorage.getItem('hm2-music') === 'false'));
+  await p.click('#musicOn');
+  check('music checkbox turns music back on', await ev(() => HM.Audio.musicOn === true && !!HM.Audio.mus));
   await p.click('#btnSetBack');
   check('settings back', await visible('menu'));
 
@@ -89,6 +93,12 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   // ---- גרירת מלבן ----
   await p.keyboard.press('Escape');
   check('Esc clears selection (not pause)', (await ev(() => HM.Game.input.selected.size)) === 0 && (await ev(() => HM.Game.mode)) === 'play');
+  // הרשימה (כשאין בחירה) מתעדכנת כשנוספת חוליה
+  const chips0 = await p.$$eval('#selEmpty .rosterChip', els => els.length);
+  await ev(() => { const w = HM.Game.world; w.money.protest += 500; return w.cmd('protest', { type: 'buy', unit: 'bochurim' }).ok; });
+  await p.waitForTimeout(400);
+  const chips1 = await p.$$eval('#selEmpty .rosterChip', els => els.length);
+  check('roster updates while nothing is selected', chips1 === chips0 + 1, { chips0, chips1 });
   await p.mouse.move(5, 300); await p.mouse.down(); await p.mouse.move(1360, 560, { steps: 5 }); await p.mouse.up();
   const boxSel = await ev(() => HM.Game.input.selected.size);
   check('drag box selects several squads', boxSel >= 2, boxSel);

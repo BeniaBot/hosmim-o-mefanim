@@ -38,7 +38,7 @@
   const G = {
     mode: 'loading', side: 'protest', mapId: 'barilan', diff: store.get('diff', 'easy'),
     speed: 1, acc: 0, camGoal: null, tutorialHint: null,
-    settings: { vol: store.get('vol', 70), quality: store.get('quality', 'medium'), muted: store.get('muted', false) },
+    settings: { vol: store.get('vol', 70), quality: store.get('quality', 'medium'), muted: store.get('muted', false), music: store.get('music', true) },
 
     boot() {
       if (!root.THREE) { $('loadMsg').textContent = 'שגיאה: קובץ הגרפיקה לא נטען.'; return; }
@@ -51,6 +51,7 @@
       }
       HM.Audio.vol = this.settings.vol / 100;
       HM.Audio.muted = this.settings.muted;
+      HM.Audio.musicOn = this.settings.music;
       this.hud = new HM.HUD(this);
       this.input = new HM.Input(this);
       this.minimap = new HM.Minimap(this);
@@ -112,6 +113,8 @@
       $('unlockAll').checked = store.get('unlockAll', false);
       $('unlockAll').onchange = (e) => { store.set('unlockAll', !!e.target.checked); this.updateMapButtons(); };
       $('btnSetBack').onclick = () => showScr('menu');
+      $('musicOn').checked = this.settings.music;
+      $('musicOn').onchange = (e) => { this.settings.music = !!e.target.checked; store.set('music', this.settings.music); HM.Audio.init(); HM.Audio.setMusic(this.settings.music); };
       const vol = (v) => { this.settings.vol = +v; store.set('vol', +v); HM.Audio.setVolume(+v / 100); $('volSlider').value = v; $('volSlider2').value = v; };
       $('volSlider').oninput = (e) => vol(e.target.value);
       $('volSlider2').oninput = (e) => vol(e.target.value);
@@ -346,6 +349,7 @@
       showScr('end');
       HM.Audio.stopAll();
       HM.Audio.sting(win);
+      HM.Audio.duckMusic(3.5);
       this.mode = 'end';
     },
 
@@ -384,6 +388,7 @@
         $('hint').textContent = '';
         setTimeout(() => this.showEnd(w.outcome), 1400);
       }
+      HM.Audio.setMood(this.mode !== 'play' || this.demo ? 'menu' : (w.H > 75 || w.sunset - w.t < 60) ? 'tense' : 'game');
       this.adaptQuality(dtReal);
       if (!this.glLost) this.stage.render();
     },
