@@ -9,5 +9,5 @@ Rules:
 - `src/sim/*` must not touch DOM/three (runs in Node tests). UI gets everything via `world.events`.
 - Both sides act only through `world.cmd(side, {...})` (human, AI, tests).
 - Balance numbers live in `src/sim/balance.js`. Use `tools/batch.js`, `tools/sweep.js`, `tools/batchpol.js` to measure.
-- Haredi audience: no female figures, no real brand names, no graphic violence. User-facing replies to Benjamin: simple Hebrew, no English terms.
+- Haredi audience: no female figures, no real brand names, no graphic violence. User-facing replies to Benjamin: simple Hebrew, no English terms — this includes short interim progress notes during work, not only stage reports.
 - After changes: `node --test v2/tests/*.test.js` and `node v2/tools/uitest.js <dir>` (needs Playwright; present in the cloud env).

@@ -15,7 +15,7 @@
       horseOnSitters: 5,      // שערורייה: פרשים מול יושבים
       askanArrest: 2,         // עצרו את העסקן
       tramBlocked: 0.1,       // תוספת לשנייה כשרכבת קלה תקועה
-      mapMul: { barilan: 1, kvish4: 0.78, gesher: 0.55 },  // כיוונון לכל מפה (מול שחקן-המחשב)
+      mapMul: { barilan: 1.15, kvish4: 0.84, gesher: 0.53 },  // כיוונון לכל מפה (מול שחקן-המחשב)
       lostSquadPenalty: 0     // (שמור לעתיד)
     },
 
@@ -113,7 +113,7 @@
       // wave = כמה חוליות יוצאות יחד בגל
       normal: { think: 0.7, incomeMul: 0.75, turnout: 16, wave: 2, react: 0.75 },
       easy:   { think: 1.3, incomeMul: 0.45, turnout: 10, wave: 2, react: 0.4 },
-      hard:   { think: 0.5, incomeMul: 1.0, turnout: 24, wave: 2, react: 0.95 },
+      hard:   { think: 0.5, incomeMul: 1.1, turnout: 24, wave: 2, react: 0.95 },
       bot:    { think: 0.8, incomeMul: 1.0, turnout: 999, wave: 1, react: 1.0 },  // שחקן-בדיקה
       novice: { think: 2.5, incomeMul: 1.0, turnout: 999, wave: 1, react: 0.25 }  // מדמה שחקן מתחיל (לכיוונון "קל")
     },
