@@ -6,6 +6,8 @@
   const U = HM.U;
   const T = root.THREE;
   const $ = (id) => document.getElementById(id);
+  // מספר עם סימן בתחילת טקסט עברי: בלי בידוד הוא מוצג "6.5+" — מבודדים אותו כטקסט משמאל לימין
+  const ltrNum = (t) => String(t).replace(/^([+\u2212-][\d.,]+)/, '\u2066$1\u2069');
   const TX = () => HM.TXT;
 
   const _v = new T.Vector3();
@@ -95,7 +97,7 @@
     updateText() {
       const w = this.w, side = this.side;
       $('money').textContent = U.fmtNum(w.money[side]);
-      $('income').textContent = '+' + w.income[side].toFixed(1) + ' לשנייה';
+      $('income').textContent = ltrNum('+' + w.income[side].toFixed(1) + ' לשנייה');
       $('meterVal').textContent = Math.floor(w.H);
       if (this.lastH !== undefined && Math.abs(w.H - this.lastH) >= 1.5) {
         const mb = $('meterBox');
@@ -356,10 +358,18 @@
       $('floaters').appendChild(el);
       this.bubbles.push({ el, x, z, y: y || 2.9, t: 2.4 });
     }
+    // ציפה שמתאחדת עם ציפה דומה וקרובה (למשל תיעוד שחוזר שוב ושוב) במקום לערום טקסטים
+    floaterSum(key, amount, suffix, x, z, color) {
+      const f = this.floaters.find(o => o.key === key && o.t > 0.6 && (o.x - x) ** 2 + (o.z - z) ** 2 < 196);
+      if (f) { f.amount += amount; f.el.textContent = ltrNum('+' + (+f.amount.toFixed(1)) + ' ' + suffix); return; }
+      this.floater('+' + (+amount.toFixed(1)) + ' ' + suffix, x, z, color);
+      const n = this.floaters[this.floaters.length - 1];
+      n.key = key; n.amount = amount;
+    }
     floater(text, x, z, color) {
       const el = document.createElement('div');
       el.className = 'floater';
-      el.textContent = text;
+      el.textContent = ltrNum(text);
       if (color) el.style.color = color;
       $('floaters').appendChild(el);
       this.floaters.push({ el, x, z, t: 1.8 });
@@ -531,7 +541,7 @@
             else if (e.reason === 'photoArrest') { this.news(N.photoArrest); this.floater('+' + e.amount + ' כותרות!', e.x, e.z, mine === 'police' ? '#ff7b6b' : null); }
             else if (e.reason === 'ambRespect') { this.news(N.ambRespect); this.floater('+' + e.amount + ' כבוד', e.x, e.z); }
             else if (e.reason === 'documented') {
-              this.floater('+' + e.amount + ' תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
+              this.floaterSum('doc', e.amount, 'תיעוד', e.x, e.z, mine === 'police' ? '#ff7b6b' : null);
               if (!this.newsDone.has('doc')) { this.newsDone.add('doc'); this.news(N.documented); }
             }
             break;
@@ -615,7 +625,8 @@
       const ids = [...inp.selected].filter(id => { const s = this.w.squadById(id); return s && !s.broken && (s.members.length || s.vehicle); });
       const sqs = ids.map(id => this.w.squadById(id));
       const key = sqs.map(s => s.id + ':' + s.members.length + ':' + this.squadState(s) + ':' + Math.round(s.morale / 5) + ':' + (s.cd.permit > 0 ? Math.ceil(s.cd.permit) : 0) + ':' + this.awayCount(s)).join(',');
-      if (!force && key === this.selKey) return;
+      // בלי בחירה — הרשימה מתעדכנת לבד (יש לה מפתח משלה)
+      if (!force && key === this.selKey) { if (!sqs.length) this.renderRoster(); return; }
       this.selKey = key;
       if (!sqs.length) {
         $('selEmpty').classList.remove('hidden');
