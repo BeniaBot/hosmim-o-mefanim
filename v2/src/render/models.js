@@ -421,7 +421,41 @@
     return merge(p);
   }
 
+  // מוכר בייגלה עם עגלה ושמשייה (דמות שלמה, הקרקע ב-0) — בדיחה חיה בפקקים גדולים
+  function vendor() {
+    const p = [], W = 0.9;   // גובה המותן
+    p.push(part(box(0.14, 0.86, 0.16), 0x3a3a40, 0.11, 0.43, 0));
+    p.push(part(box(0.14, 0.86, 0.16), 0x3a3a40, -0.11, 0.43, 0));
+    p.push(part(box(0.16, 0.08, 0.26), 0x222222, 0.11, 0.04, 0.04));
+    p.push(part(box(0.16, 0.08, 0.26), 0x222222, -0.11, 0.04, 0.04));
+    p.push(part(box(0.46, 0.62, 0.27), 0x8fb4d8, 0, W + 0.32, 0));          // חולצה תכלת
+    p.push(part(box(0.42, 0.78, 0.02), 0xf6f3ea, 0, W + 0.12, 0.145));      // סינר
+    p.push(part(box(0.12, 0.5, 0.14), 0x8fb4d8, 0.27, W + 0.42, 0.22, -1.15, 0, 0));   // ידיים קדימה, דוחפות
+    p.push(part(box(0.12, 0.5, 0.14), 0x8fb4d8, -0.27, W + 0.42, 0.22, -1.15, 0, 0));
+    p.push(part(cyl(0.06, 0.07, 0.1, 8), SKIN, 0, W + 0.66, 0));
+    p.push(part(sph(0.135, 12, 10), SKIN, 0, W + 0.8, 0, 0, 0, 0, 1, 1.08, 1));
+    p.push(part(cyl(0.15, 0.15, 0.09, 12), 0x2f4a35, 0, W + 0.94, 0));      // כובע מצחייה
+    p.push(part(box(0.24, 0.025, 0.14), 0x2f4a35, 0, W + 0.9, 0.14));
+    // העגלה
+    const cz = 0.95;
+    p.push(part(box(0.66, 0.42, 0.95), 0x9a6b3c, 0, 0.78, cz));
+    p.push(part(box(0.7, 0.05, 0.99), 0x7a522c, 0, 1.0, cz));
+    for (const sx of [-0.36, 0.36]) for (const sz of [-0.3, 0.3]) p.push(part(cyl(0.16, 0.16, 0.06, 12), 0x1d1d1d, sx, 0.16, cz + sz, 0, 0, Math.PI / 2));
+    p.push(part(box(0.05, 0.6, 0.05), 0x555555, 0.3, 0.45, cz - 0.3));
+    p.push(part(box(0.05, 0.6, 0.05), 0x555555, -0.3, 0.45, cz - 0.3));
+    p.push(part(box(0.05, 0.6, 0.05), 0x555555, 0.3, 0.45, cz + 0.4));
+    p.push(part(box(0.05, 0.6, 0.05), 0x555555, -0.3, 0.45, cz + 0.4));
+    // בייגלה על המגש
+    const tor = new T.TorusGeometry(0.085, 0.034, 6, 12); tor.rotateX(Math.PI / 2);
+    for (let i = 0; i < 9; i++) p.push(part(tor, 0xc98b4a, -0.2 + (i % 3) * 0.2, 1.06 + (i > 5 ? 0.05 : 0), cz - 0.28 + Math.floor(i / 3) * 0.28));
+    // שמשייה בפסים אדום-לבן
+    p.push(part(cyl(0.025, 0.025, 1.5, 6), 0xdddddd, 0, 1.75, cz));
+    for (let k = 0; k < 8; k++) p.push(part(new T.ConeGeometry(0.95, 0.32, 2, 1, true, k * Math.PI / 4, Math.PI / 4), k % 2 ? 0xf4f1ea : 0xc8322a, 0, 2.55, cz));
+    return merge(p);
+  }
+
   HM.Models = {
+    vendor,
     lin, part, merge, box, cyl, sph, tram, ambulance,
     bochur, avrech, askan, photographer, riot, officer, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier

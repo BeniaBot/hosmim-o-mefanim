@@ -126,6 +126,13 @@
       if (!w || w.outcome) return;
       this.chatT -= dt;
       if (this.gagT > 0) this.gagT -= dt;
+      // מוכר הבייגלה (אם הוא בפקק) — הודעה פעם אחת, וקריאות מדי פעם
+      const vs = this.g.view && this.g.view.vendorState;
+      if (vs && vs.on && !vs.leaving) {
+        if (!this.newsDone.has('vendor')) { this.newsDone.add('vendor'); this.news(TX().NEWS.vendor); }
+        vs.talkT = (vs.talkT === undefined ? 1.5 : vs.talkT) - dt;
+        if (vs.talkT <= 0) { vs.talkT = 6 + Math.random() * 6; this.bubble(TX().pick(TX().LINES.vendor), vs.x, vs.z, '', 3.2, true); }
+      }
       if (this.chatT > 0) return;
       this.chatT = 7 + Math.random() * 7;
       const cand = w.squads.filter(s => s.side === 'protest' && !s.broken && s.members.length && !s.moving && w.map.isRoad(HM.Units.centroid(s).x, HM.Units.centroid(s).z));

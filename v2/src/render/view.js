@@ -103,6 +103,75 @@
       for (const m of this.mats) { if (m.map) m.map.dispose(); if (m.emissiveMap) m.emissiveMap.dispose(); m.dispose(); }
     }
 
+    // ---- מוכר הבייגלה: נכנס לפקק גדול, הולך בין המכוניות התקועות, עוצר "למכור" ויוצא ----
+    updateVendor(dt) {
+      const w = this.world, v = this.vendorState, mesh = this.vendor;
+      if (!mesh) return;
+      dt = Math.min(dt, 0.1);
+      const laneW = w.BAL.traffic.laneW;
+      const posAt = (d) => { const p = w.map.lanePos(v.L, d); return v.L.axis === 'x' ? { x: p.x, z: v.b } : { x: v.b, z: p.z }; };
+      if (!v.on) {
+        mesh.visible = false;
+        if (w.t < v.readyAt || w.outcome || w.traffic.jamKm < 0.8) return;
+        // הנתיב הכי פקוק, וקו בין נתיבים שאפשר ללכת עליו (כביש משני הצדדים)
+        const lanes = w.traffic.lanes.filter(l => !l.L.tram && l.jamCars >= 5).sort((a, b) => b.jamCars - a.jamCars);
+        for (const lane of lanes) {
+          const L = lane.L;
+          for (const sg of [1, -1]) {
+            const b = L.off + sg * laneW / 2;
+            const probe = (o) => L.axis === 'x' ? w.map.isRoad(L.p0.x + L.dx * 40, b + o) : w.map.isRoad(b + o, L.p0.z + L.dz * 40);
+            if (!probe(0.5) || !probe(-0.5)) continue;
+            const tail = lane.cars[lane.cars.length - 1], head = lane.cars.find(c => c.jammed) || lane.cars[0];
+            v.on = true; v.L = L; v.b = b; v.lane = lane;
+            // נכנס כ-30 מטר מאחורי ראש הפקק — קרוב לאקשן, לא בקצה המפה
+            v.d = U.clamp(head.d - 30, Math.max(3, tail.d - tail.len - 4), head.d - 8);
+            v.stopT = 0; v.walkT = 0; v.leaveT = 55 + Math.random() * 25; v.leaving = 0; v.vx = 0; v.vz = 0;
+            const p0 = posAt(v.d);
+            v.x = p0.x; v.z = p0.z;
+            v.face = Math.atan2(L.dx, L.dz);
+            v.justArrived = true;
+            break;
+          }
+          if (v.on) break;
+        }
+        if (!v.on) { v.readyAt = w.t + 5; return; }
+      }
+      v.leaveT -= dt;
+      const lane = v.lane;
+      const head = lane.cars.find(c => c.jammed);
+      // סוף הסיבוב: הגיע לראש הפקק, נגמר הזמן, או שהפקק התפרק — יוצא לצד הכביש ונעלם
+      if (!v.leaving && (v.leaveT <= 0 || !head || lane.jamCars < 2 || v.d > head.d + 2 || w.outcome)) {
+        v.leaving = 3.5;
+        const sw = w.map.nearestSidewalk(v.x, v.z);
+        v.exit = sw;
+      }
+      if (v.leaving) {
+        v.leaving -= dt;
+        const dx = v.exit.x - v.x, dz = v.exit.z - v.z, dd = Math.hypot(dx, dz);
+        if (dd > 0.3) { v.x += dx / dd * 1.3 * dt; v.z += dz / dd * 1.3 * dt; v.face = U.turnToward(v.face, Math.atan2(dx, dz), 4 * dt); }
+        if (v.leaving <= 0) { v.on = false; v.readyAt = w.t + 70 + Math.random() * 40; mesh.visible = false; return; }
+      } else if (v.stopT > 0) {
+        // עומד ליד מכונית ו"מוכר" — מסתובב אליה
+        v.stopT -= dt;
+        v.face = U.turnToward(v.face, Math.atan2(v.L.axis === 'x' ? 0 : (v.L.off - v.b), v.L.axis === 'x' ? (v.L.off - v.b) : 0), 3 * dt);
+      } else {
+        // הולך קדימה לאורך הפקק; עוצר מול אנשים
+        let blocked = false;
+        const ahead = posAt(v.d + 1.6);
+        for (const q of w.neighbors(ahead.x, ahead.z, 1.2)) if (q.state !== 'carried' && q.state !== 'detained') { blocked = true; break; }
+        if (!blocked) v.d += 1.1 * dt;
+        const p = posAt(v.d);
+        v.x = p.x; v.z = p.z;
+        v.face = U.turnToward(v.face, Math.atan2(v.L.dx, v.L.dz), 4 * dt);
+        v.walkT += dt;
+        if (v.walkT > 7 + Math.random() * 3) { v.walkT = 0; v.stopT = 2.5; }
+      }
+      mesh.visible = true;
+      const bob = (v.stopT > 0 ? 0 : Math.abs(Math.sin(performance.now() / 1000 * 7)) * 0.04);
+      mesh.position.set(v.x, this.groundY(v.x, v.z) + bob, v.z);
+      mesh.rotation.y = v.face;
+    }
+
     groundY(x, z) {
       return this.world.map.isRoad(x, z) ? 0 : CURB_H;
     }
@@ -660,6 +729,12 @@
       this.pendGold = inst(pendGeo, this.mat(new T.MeshBasicMaterial({ color: 0xffd96b, transparent: true, opacity: 0.85, depthWrite: false })), 4);
       this.pendBlue.renderOrder = 3; this.pendGold.renderOrder = 3;
       R.add(this.pendBlue); R.add(this.pendGold);
+      // מוכר הבייגלה (בדיחה חיה — רק ציור, בלי השפעה על המשחק)
+      this.vendor = new T.Mesh(M.vendor(), this.mat(new T.MeshLambertMaterial({ vertexColors: true })));
+      this.vendor.castShadow = true;
+      this.vendor.visible = false;
+      R.add(this.vendor);
+      this.vendorState = { on: false, readyAt: 25 };   // לפי שעון המשחק
       const mkGeo = new T.RingGeometry(0.9, 1.2, 32); mkGeo.rotateX(-Math.PI / 2);
       this.marker = new T.Mesh(mkGeo, this.mat(new T.MeshBasicMaterial({ color: 0x5ee37a, transparent: true, opacity: 0, depthWrite: false })));
       this.marker.renderOrder = 3;
@@ -939,6 +1014,8 @@
       }
       this.pendBlue.count = pb; this.pendBlue.instanceMatrix.needsUpdate = true;
       this.pendGold.count = pg; this.pendGold.instanceMatrix.needsUpdate = true;
+
+      this.updateVendor(dtReal);
 
       // ---- סמן יעד ----
       if (this.markerT > 0) {
