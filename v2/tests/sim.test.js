@@ -571,3 +571,13 @@ test('water cannon sent to a spot blocked by protesters stops nearby instead of 
   run(w, 60);
   assert.strictEqual(can.vehicle.state, 'idle');
 });
+
+test('a move order after the water cannon was stuck is not dropped (stale "still" timer)', () => {
+  const w = newWorld();
+  const can = U.makeSquad(w, 'police', 'cannon', 30, -31);
+  can.vehicle.stillT = 6;   // כאילו הייתה תקועה בנסיעה הקודמת
+  const x0 = can.vehicle.x, z0 = can.vehicle.z;
+  w.cmd('police', { type: 'move', squads: [can.id], x: -20, z: -2 });
+  run(w, 10);
+  assert.ok(Math.hypot(can.vehicle.x - x0, can.vehicle.z - z0) > 5, 'it drives');
+});

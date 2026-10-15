@@ -1098,7 +1098,7 @@
     updateWater(V, dt) {
       const W = this.water;
       dt = Math.min(dt, 0.05);
-      if (V && V.spray) {
+      if (V && V.spray && dt > 0) {   // בהשהיה לא נולדים חלקיקים (אחרת כולם נערמים בפיה)
         const ax = Math.sin(V.aim), az = Math.cos(V.aim);
         const ox = V.x + Math.sin(V.heading) * 0.4 + ax * 1.4, oz = V.z + Math.cos(V.heading) * 0.4 + az * 1.4;
         for (let k = 0; k < 9; k++) {

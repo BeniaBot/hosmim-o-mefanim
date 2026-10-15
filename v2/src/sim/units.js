@@ -798,6 +798,7 @@
     V.path = grid.path(V.x, V.z, t.x, t.z);
     V.pathI = 0;
     V.dest = t;
+    V.stillT = 0;   // נסיעה חדשה — לא יורשים "תקועה" מהנסיעה הקודמת
     if (V.state !== 'refill' && V.state !== 'return') V.state = 'drive';
   }
 

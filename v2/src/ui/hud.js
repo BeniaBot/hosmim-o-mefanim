@@ -152,7 +152,7 @@
       // לפעמים (ותמיד כשאין מפגינים על הכביש) — נהג עומד, קרוב למצלמה, אומר משהו
       if (!cand.length || Math.random() < 0.3) {
         const cam = this.g.stage && this.g.stage.cam;
-        const near = w.traffic.cars.filter(c => c.v < 0.5 && c.type !== 'bus' && (!cam || Math.hypot(c.x - cam.tx, c.z - cam.tz) < 45));
+        const near = w.traffic.cars.filter(c => c.v < 0.5 && c.type !== 'bus' && c.type !== 'tram' && !(c.lane && c.lane.L.tram) && (!cam || Math.hypot(c.x - cam.tx, c.z - cam.tz) < 45));
         if (near.length) {
           const c = near[Math.floor(Math.random() * near.length)];
           this.bubble(TX().pick(c.jammed ? TX().LINES.driver : TX().LINES.driverEarly), c.x, c.z, 'driver', 2.4);
@@ -533,7 +533,7 @@
             } else if (e.side === 'protest' && mine === 'police' && w.t > 1 && !waveIn) {
               // בגל יחיד יוצאת התראה אחת מסכמת (ב-'wave') — לא התראה לכל חוליה
               const U = TX().UNITS[e.unit];
-              this.alert((U.arrive || U.name + ' בדרך') + ' — בדרך לצומת', 'warn', e.unit, 'arrp');
+              this.alert(U.name + ' בדרך לצומת', 'warn', e.unit, 'arrp');
             }
             break;
           case 'wave':
@@ -558,7 +558,7 @@
             break;
           case 'permitBlocked':
             if (!(this.officerBubbleT > performance.now())) { this.officerBubbleT = performance.now() + 8000; this.bubble(TX().pick(L.officer), e.x + 1.5, e.z + 1.5, 'cop', 3.2, true); }
-            if (mine === 'protest' && this.pblkN++ < 3) this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
+            if (mine === 'protest') { if (this.pblkN < 3 && this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk')) this.pblkN++; }
             else this.alert('הקצין שלכם ביטל את "יש לי אישור" של העסקן', 'good', 'officer', 'pblk');
             break;
           case 'ambIncoming': {
