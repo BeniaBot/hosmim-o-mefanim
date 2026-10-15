@@ -107,7 +107,7 @@
       $('qualSeg').querySelectorAll('.segBtn').forEach(b => b.classList.toggle('active', b.dataset.q === this.settings.quality));
       $('btnStart').onclick = () => { HM.Audio.init(); this.startGame(); };
       $('btnHow').onclick = () => { showScr('howto'); };
-      $('btnHowBack').onclick = () => { showScr(this.howReturn || 'menu'); this.howReturn = null; if (this.mode === 'paused') showScr('pause'); };
+      $('btnHowBack').onclick = () => { showScr(this.mode === 'paused' ? 'pause' : (this.howReturn || 'menu')); this.howReturn = null; };
       $('btnSettings').onclick = () => showScr('settings');
       $('btnSetBack').onclick = () => showScr('menu');
       const vol = (v) => { this.settings.vol = +v; store.set('vol', +v); HM.Audio.setVolume(+v / 100); $('volSlider').value = v; $('volSlider2').value = v; };
@@ -117,6 +117,10 @@
       $('btnResume').onclick = () => this.togglePause();
       $('btnRestart').onclick = () => this.startGame();
       $('btnQuit').onclick = () => this.toMenu();
+      $('btnPauseHow').onclick = () => { this.howReturn = 'pause'; showScr('howto'); };
+      // כפתור שנלחץ לא נשאר "בפוקוס" — אחרת רווח/Enter ילחצו עליו שוב
+      document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
+      root.addEventListener('keyup', (e) => { if (e.code === 'Space') e.preventDefault(); });
       $('btnAgain').onclick = () => this.startGame();
       $('btnEndMenu').onclick = () => this.toMenu();
       $('btnMute').classList.toggle('off', this.settings.muted);

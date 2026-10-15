@@ -114,7 +114,8 @@
       normal: { think: 0.7, incomeMul: 0.75, turnout: 16, wave: 2, react: 0.75 },
       easy:   { think: 1.3, incomeMul: 0.45, turnout: 10, wave: 2, react: 0.4 },
       hard:   { think: 0.5, incomeMul: 1.0, turnout: 24, wave: 2, react: 0.95 },
-      bot:    { think: 0.8, incomeMul: 1.0, turnout: 999, wave: 1, react: 1.0 }   // שחקן-בדיקה
+      bot:    { think: 0.8, incomeMul: 1.0, turnout: 999, wave: 1, react: 1.0 },  // שחקן-בדיקה
+      novice: { think: 2.5, incomeMul: 1.0, turnout: 999, wave: 1, react: 0.25 }  // מדמה שחקן מתחיל (לכיוונון "קל")
     },
 
     // ----- המשטרה הממוחשבת (כשהשחקן מפגין) -----
