@@ -28,7 +28,7 @@
       return stars > before;
     },
     unlocked(side, map) {
-      if (/[?&]unlock=1/.test(root.location.search || '')) return true;
+      if (/[?&]unlock=1/.test(root.location.search || '') || store.get('unlockAll', false)) return true;
       const i = MAP_ORDER.indexOf(map);
       return i <= 0 || this.best(side, MAP_ORDER[i - 1]) > 0;
     }
@@ -109,6 +109,8 @@
       $('btnHow').onclick = () => { showScr('howto'); };
       $('btnHowBack').onclick = () => { showScr(this.mode === 'paused' ? 'pause' : (this.howReturn || 'menu')); this.howReturn = null; };
       $('btnSettings').onclick = () => showScr('settings');
+      $('unlockAll').checked = store.get('unlockAll', false);
+      $('unlockAll').onchange = (e) => { store.set('unlockAll', !!e.target.checked); this.updateMapButtons(); };
       $('btnSetBack').onclick = () => showScr('menu');
       const vol = (v) => { this.settings.vol = +v; store.set('vol', +v); HM.Audio.setVolume(+v / 100); $('volSlider').value = v; $('volSlider2').value = v; };
       $('volSlider').oninput = (e) => vol(e.target.value);

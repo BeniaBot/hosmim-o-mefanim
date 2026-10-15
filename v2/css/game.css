@@ -57,6 +57,8 @@ button { font-family: inherit; cursor: pointer; }
 .bigBtn:active { transform: translateY(2px); box-shadow: 0 2px 0 #7e1f19; }
 .bigBtn.sec { background: transparent; color: var(--ink); border: 2px solid var(--ink); box-shadow: none; font-size: 18px; padding: 10px; margin: 8px 0; }
 .startSum { text-align: center; font-size: 14px; color: var(--ink2); }
+.version { text-align: center; font-size: 11.5px; color: rgba(0,0,0,0.35); margin-top: 10px; }
+.setRow input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--red); }
 .menuLinks { display: flex; justify-content: center; gap: 22px; margin-top: 12px; }
 .link { background: none; border: none; color: var(--ink); font-size: 16px; text-decoration: underline; text-underline-offset: 4px; }
 .howSide { font-family: 'Frank Ruhl Libre', serif; font-weight: 900; font-size: 20px; margin: 12px 0 6px; border-bottom: 1px solid rgba(0,0,0,0.2); }
