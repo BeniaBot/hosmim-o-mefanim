@@ -467,6 +467,7 @@
       setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 520); }, ms || 3600);
     }
     news(text) {
+      if (Array.isArray(text)) text = TX().pick(text);
       if (this.tick) { this.tick.q.push(text); if (this.tick.q.length > 4) this.tick.q.shift(); }
       const box = $('news');
       const el = document.createElement('div');
