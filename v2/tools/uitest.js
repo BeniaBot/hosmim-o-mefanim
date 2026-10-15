@@ -84,6 +84,15 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.waitForTimeout(200);
   check('click on badge selects squad', (await ev(() => HM.Game.input.selected.size)) === 1);
   check('selection panel shows the squad', await visible('selBody'));
+  // הכפתור לא "בורח" מתחת לעכבר כשההסבר מתחלף
+  const sitBtn = await p.$('#selActions button');
+  if (sitBtn) {
+    const r0 = await sitBtn.boundingBox();
+    await p.mouse.move(r0.x + r0.width / 2, r0.y + r0.height / 2);
+    await p.waitForTimeout(500);
+    const r1 = await sitBtn.boundingBox();
+    check('action button stays under the mouse on hover', Math.abs(r1.y - r0.y) < 2, { before: r0.y, after: r1.y });
+  }
   check('selected squad shows a flavor line', (await p.textContent('#selFlavor')).length > 5, await p.textContent('#selFlavor'));
   check('news ticker shows the opening headline', (await p.textContent('#tickText')).length > 5 || (await ev(() => HM.Game.hud.tick.q.length)) > 0);
 

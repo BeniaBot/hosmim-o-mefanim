@@ -42,7 +42,7 @@
       const c = a.d - 2.8;
       const road = this.w.map.roads.find(r => r.id === L.road);
       const toward = road ? -Math.sign(L.off - road.c) || 1 : 1;
-      const side = toward * (this.w.BAL.traffic.laneW / 2 - 0.35);
+      const side = toward * (this.w.BAL.traffic.laneW / 2);   // בדיוק על הקו בין הנתיבים (המכוניות זזות לו הצידה)
       a.x = L.p0.x + L.dx * c + (L.axis === 'z' ? side : 0);
       a.z = L.p0.z + L.dz * c + (L.axis === 'x' ? side : 0);
     }

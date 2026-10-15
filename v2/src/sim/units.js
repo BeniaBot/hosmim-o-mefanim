@@ -1002,7 +1002,11 @@
     for (const o of world.squads) {
       if (o.type !== 'officer' || !o.members.length) continue;
       const m0 = o.members[0];
-      if (U.dist2(m0.x, m0.z, a.x, a.z) < O.range * O.range) { world.events.push('permitBlocked', { x: a.x, z: a.z }); return { ok: false, reason: 'officer' }; }
+      if (U.dist2(m0.x, m0.z, a.x, a.z) < O.range * O.range) {
+        sq.cd.permit = Math.max(sq.cd.permit || 0, 8);   // הקצין "מכיר את התרגיל" — לא מנסים שוב מיד
+        world.events.push('permitBlocked', { x: a.x, z: a.z });
+        return { ok: false, reason: 'officer' };
+      }
     }
     let best = null, bd = P.range * P.range;
     for (const o of world.squads) {

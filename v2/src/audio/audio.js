@@ -70,14 +70,14 @@
       const g = c.createGain();
       for (let k = 0; k < 6; k++) o.frequency.setValueAtTime(k % 2 ? 660 : 880, t + k * 0.42);
       o.connect(g); g.connect(this.master);
-      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.1);
-      g.gain.setValueAtTime(0.04, t + 2.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.1);
+      g.gain.setValueAtTime(0.12, t + 2.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
       o.start(t); o.stop(t + 2.7);
     },
     setCrowd(level) {
       if (!this.crowd) return;
       const t = this.ctx.currentTime;
-      const v = Math.min(0.11, level * 0.006);
+      const v = Math.min(0.15, level * 0.0065);
       this.crowd.g.gain.setTargetAtTime(v * 0.6, t, 0.4);
       this.crowd.lg.gain.setTargetAtTime(v * 0.5, t, 0.4);
     },
@@ -116,8 +116,8 @@
       }
       o.connect(g); g.connect(this.master);
       g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.045, t + 0.15);
-      g.gain.setValueAtTime(0.045, t + 2.4);
+      g.gain.exponentialRampToValueAtTime(0.09, t + 0.15);
+      g.gain.setValueAtTime(0.09, t + 2.4);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 2.8);
       o.start(t); o.stop(t + 2.9);
     },

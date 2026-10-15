@@ -371,7 +371,12 @@
       if (this.tutorial.step === 1 && kind === 'move' && d.onRoad) this.setTut(2);
       else if (this.tutorial.step === 2 && kind === 'stance' && d.st === 'sit') this.setTut(3);
     },
-    onBuy() { if (this.tutorial && this.tutorial.step >= 2 && this.tutorial.step <= 3) this.setTut(this.tutorial.step + 1); },
+    onBuy() {
+      if (!this.tutorial) return;
+      const st = this.tutorial.step;
+      // במפגינים שלב 3 הוא "לשבת" — קנייה לא מדלגת עליו
+      if (this.side === 'protest' ? st === 3 : (st >= 2 && st <= 3)) this.setTut(st + 1);
+    },
     tickTutorial(dt) {
       if (!this.tutorial) return;
       const st = this.tutorial.step;

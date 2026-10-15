@@ -485,3 +485,30 @@ test('kugel truck: a clear road brings morale to the protest; blocking it too lo
   run(w2, 60, () => { for (const e of w2.events.list) if (e.type === 'kugelCold') cold = true; });
   assert.ok(cold, 'kugel went cold');
 });
+
+test('an ambulance squeezing past does not wipe out a jam that is already there', () => {
+  const w = new HM.World({ seed: 21, protest: 'human', police: 'human', empty: true, ambulance: true });
+  w.amb.nextT = 1e9; w.amb.nextK = 1e9;
+  placeSquad(w, 'protest', 'avrechim', -25, 0, true);    // חוסמים את הכביש הראשי
+  run(w, 70);
+  w.amb.spawn('amb');
+  // הנתיב של האמבולנס (התור שלו מערבית לחוסמים — רמזורים לא משפיעים עליו)
+  const lane = w.traffic.lanes.find(l => l.L === w.amb.list[0].L);
+  const before = lane.jamCars;
+  assert.ok(before > 5, 'a jam formed in the ambulance lane: ' + before);
+  let minJam = before;
+  run(w, 8, () => { minJam = Math.min(minJam, lane.jamCars); });
+  assert.ok(minJam >= before * 0.7, `jam stays while the ambulance passes (${before} → min ${minJam})`);
+});
+
+test('an askan next to the liaison officer does not spam "I have a permit"', () => {
+  const w = new HM.World({ seed: 5, protest: 'ai', police: 'human', empty: true, protestDifficulty: 'normal' });
+  const ask = placeSquad(w, 'protest', 'askan', -20, 0);
+  placeSquad(w, 'protest', 'bochurim', -22, 0, true);
+  const off = U.makeSquad(w, 'police', 'officer', -19, 1.5); U.setGoal(w, off, -19, 1.5);
+  const cops = U.makeSquad(w, 'police', 'patrol', -16, 3); U.setGoal(w, cops, -16, 3);
+  void ask;
+  let blocked = 0;
+  run(w, 60, () => { for (const e of w.events.list) if (e.type === 'permitBlocked') blocked++; });
+  assert.ok(blocked <= 4, 'permit blocked events in a minute: ' + blocked);
+});

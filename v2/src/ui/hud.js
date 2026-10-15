@@ -143,7 +143,7 @@
         const idle = w.squads.filter(s => s.side === 'police' && !s.vehicle && s.members.length && !s.moving && !s.target && s.members.every(c => c.state === 'free'));
         if (idle.length) {
           const s = idle[Math.floor(Math.random() * idle.length)], c = HM.Units.centroid(s);
-          this.bubble(TX().pick(TX().LINES.copIdle), c.x, c.z, 'cop', 3.2);
+          this.bubble(TX().pick(TX().LINES.copIdle), c.x, c.z, 'cop', 4.4);   // מעל השלט של החוליה
           return;
         }
       }
@@ -231,7 +231,7 @@
         c.why.textContent = why;
       }
       $('selExplain').textContent = this.hoverExplain || this.selExplainDefault || '';
-      $('selFlavor').textContent = this.hoverExplain ? '' : (this.flavorDefault || '');
+      $('selFlavor').textContent = this.flavorDefault || ''; $('selFlavor').style.visibility = this.hoverExplain ? 'hidden' : '';
       // מזרימים קהל לפי מספר המפגינים על הכביש
       let onRoad = 0;
       for (const p of w.people) if (p.side === 'protest' && (p.state === 'free' || p.state === 'held') && w.map.isRoad(p.x, p.z)) onRoad++;
@@ -541,7 +541,7 @@
             if (mine === 'police') this.alert('אוטובוס הוריד מפגינים', 'warn', 'bus', 'busArr');
             break;
           case 'permitBlocked':
-            this.bubble(TX().pick(L.officer), e.x + 1.5, e.z + 1.5, 'cop', 3.2, true);
+            if (!(this.officerBubbleT > performance.now())) { this.officerBubbleT = performance.now() + 8000; this.bubble(TX().pick(L.officer), e.x + 1.5, e.z + 1.5, 'cop', 3.2, true); }
             if (mine === 'protest') this.alert('קצין הקישור לא מאמין לעסקן — "יש לי אישור" לא עובד כשהוא לידו', 'warn', 'officer', 'pblk');
             else this.alert('הקצין שלכם ביטל את "יש לי אישור" של העסקן', 'good', 'officer', 'pblk');
             break;
@@ -799,7 +799,7 @@
       }
       // מציגים מיד (ולא רק בעדכון הטקסט הבא)
       $('selExplain').textContent = this.hoverExplain || this.selExplainDefault || '';
-      $('selFlavor').textContent = this.hoverExplain ? '' : (this.flavorDefault || '');
+      $('selFlavor').textContent = this.flavorDefault || ''; $('selFlavor').style.visibility = this.hoverExplain ? 'hidden' : '';
     }
   }
 

@@ -129,7 +129,7 @@
             const p0 = posAt(v.d);
             v.x = p0.x; v.z = p0.z;
             v.face = Math.atan2(L.dx, L.dz);
-            v.justArrived = true;
+            v.justArrived = true; v.thinT = 0; v.talkT = 0.3;
             break;
           }
           if (v.on) break;
@@ -140,7 +140,9 @@
       const lane = v.lane;
       const head = lane.cars.find(c => c.jammed);
       // סוף הסיבוב: הגיע לראש הפקק, נגמר הזמן, או שהפקק התפרק — יוצא לצד הכביש ונעלם
-      if (!v.leaving && (v.leaveT <= 0 || !head || lane.jamCars < 2 || v.d > head.d + 2 || w.outcome)) {
+      // הפקק "התפרק" — רק אם זה נמשך כמה שניות (דגל הפקק יכול להבהב לרגע)
+      v.thinT = (!head || lane.jamCars < 2) ? (v.thinT || 0) + dt : 0;
+      if (!v.leaving && (v.leaveT <= 0 || v.thinT > 3.5 || (head && v.d > head.d + 2) || w.outcome)) {
         v.leaving = 3.5;
         const sw = w.map.nearestSidewalk(v.x, v.z);
         v.exit = sw;

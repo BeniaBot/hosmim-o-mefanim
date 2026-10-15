@@ -178,9 +178,9 @@
           if (best && U.dist(am.x, am.z, best.x, best.z) > 6 && !a.moving) {
             w.cmd('protest', { type: 'move', squads: [a.id], x: best.x + 3, z: best.z + 3 });
           }
-          if ((a.cd.permit || 0) <= 0) {
+          if ((a.cd.permit || 0) <= 0 && !(a.permitHold > w.t)) {
             const r = w.cmd('protest', { type: 'permit', squad: a.id });
-            void r;
+            if (!r.ok && r.reason === 'officer') a.permitHold = w.t + 25;   // הקצין לידו — מחכים
           }
         }
       }
