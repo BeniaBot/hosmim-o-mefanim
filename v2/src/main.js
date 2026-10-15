@@ -289,7 +289,7 @@
 
     togglePause() {
       if (this.mode === 'play' && this.world && this.world.outcome) return;   // המשחק נגמר — מסך הסיום בדרך
-      if (this.mode === 'play') { this.mode = 'paused'; showScr('pause'); HM.Audio.stopAll(); }
+      if (this.mode === 'play') { this.mode = 'paused'; $('pauseFun').textContent = HM.TXT.pickNot(HM.TXT.PAUSE, $('pauseFun').textContent); showScr('pause'); HM.Audio.stopAll(); }
       else if (this.mode === 'paused') { this.mode = 'play'; showScr(null); }
     },
     toggleSpeed() {

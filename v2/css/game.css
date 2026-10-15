@@ -249,3 +249,4 @@ button { font-family: inherit; cursor: pointer; }
 .endBadge { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 2px auto 8px; font-size: 15.5px; color: #3a3226; }
 .endBadge .ebLbl { background: #b8902f; color: #fff; font-weight: 800; font-size: 12px; padding: 2px 9px; border-radius: 5px; flex: none; }
 #endBadge { font-weight: 700; }
+.pauseFun { text-align: center; font-style: italic; color: #6a604e; font-size: 14px; margin: -2px 0 12px; }

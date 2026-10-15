@@ -454,8 +454,26 @@
     return merge(p);
   }
 
+  // נהג שיצא מהמכונית לראות מה קורה (דמות שלמה, הקרקע ב-0)
+  function driverOut(shirt) {
+    const p = [], W = 0.9;
+    p.push(part(box(0.14, 0.86, 0.16), 0x2d3240, 0.11, 0.43, 0));
+    p.push(part(box(0.14, 0.86, 0.16), 0x2d3240, -0.11, 0.43, 0));
+    p.push(part(box(0.16, 0.08, 0.26), 0x222222, 0.11, 0.04, 0.04));
+    p.push(part(box(0.16, 0.08, 0.26), 0x222222, -0.11, 0.04, 0.04));
+    p.push(part(box(0.48, 0.64, 0.28), shirt, 0, W + 0.32, 0));
+    // יד אחת על המותן, אחת מורמת בתנועת "נו?!"
+    p.push(part(box(0.12, 0.5, 0.14), shirt, 0.3, W + 0.32, 0.02, 0, 0, 0.5));
+    p.push(part(box(0.12, 0.46, 0.14), shirt, -0.3, W + 0.66, 0.06, -0.2, 0, -0.9));
+    p.push(part(box(0.09, 0.09, 0.1), SKIN, -0.48, W + 0.86, 0.1));
+    p.push(part(cyl(0.06, 0.07, 0.1, 8), SKIN, 0, W + 0.66, 0));
+    p.push(part(sph(0.135, 12, 10), SKIN, 0, W + 0.8, 0, 0, 0, 0, 1, 1.08, 1));
+    p.push(part(cyl(0.1, 0.1, 0.02, 10), 0x1e2a4a, 0, W + 0.94, -0.02));   // כיפה
+    return merge(p);
+  }
+
   HM.Models = {
-    vendor,
+    vendor, driverOut,
     lin, part, merge, box, cyl, sph, tram, ambulance,
     bochur, avrech, askan, photographer, riot, officer, cop, rider, leg, horse, car, cannonBody, cannonTurret, policeVan, patrolCar,
     tree, lamp, lampGlow, solarHeater, trafficLight, bollard, barrier

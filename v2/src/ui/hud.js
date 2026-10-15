@@ -126,6 +126,9 @@
       if (!w || w.outcome) return;
       this.chatT -= dt;
       if (this.gagT > 0) this.gagT -= dt;
+      // נהג שיצא מהמכונית — אומר משהו פעם אחת
+      const dOut = this.g.view && this.g.view.driversOut;
+      if (dOut) for (const d of dOut) if (d.car && !d.said && d.x !== undefined) { d.said = true; this.bubble(TX().pick(TX().LINES.driverOut), d.x, d.z, 'driver', 2.9, true); }
       // מוכר הבייגלה (אם הוא בפקק) — הודעה פעם אחת, וקריאות מדי פעם
       const vs = this.g.view && this.g.view.vendorState;
       if (vs && vs.on && !vs.leaving) {

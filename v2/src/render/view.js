@@ -172,6 +172,44 @@
       mesh.rotation.y = v.face;
     }
 
+    // ---- נהג יוצא מהמכונית בפקק ארוך, עומד ליד הדלת, ואחרי כמה שניות חוזר פנימה ----
+    updateDriversOut(dt) {
+      const w = this.world;
+      if (!this.driversOut) return;
+      for (const d of this.driversOut) {
+        if (!d.car) continue;
+        d.t -= dt;
+        const c = d.car;
+        // המכונית זזה / יצאה מהמפה / נגמר הזמן — חוזר פנימה
+        if (d.t <= 0 || c.v > 0.4 || !c.lane.cars.includes(c) || w.outcome) { d.car = null; d.mesh.visible = false; continue; }
+        const sh = Math.sin(c.heading), ch = Math.cos(c.heading);
+        const off = c.wid / 2 + 0.45;
+        const x = c.x - ch * off + sh * 0.4, z = c.z + sh * off + ch * 0.4;   // צד הנהג (שמאל)
+        d.x = x; d.z = z;
+        d.mesh.position.set(x, this.groundY(x, z), z);
+        d.mesh.rotation.y = c.heading + Math.PI / 2 * (0.6 + 0.2 * Math.sin(performance.now() / 900));
+        d.mesh.visible = true;
+      }
+      if (w.t < this.driverNextT || w.outcome) return;
+      this.driverNextT = w.t + 12 + Math.random() * 14;
+      const free = this.driversOut.find(d => !d.car);
+      if (!free) return;
+      // מכונית שעומדת בפקק כבר הרבה זמן, עם מקום פנוי ליד הדלת
+      const cands = [];
+      for (const lane of w.traffic.lanes) {
+        if (lane.L.tram) continue;
+        for (const c of lane.cars) if (c.jammed && c.stopT > 35 && c.type !== 'bus' && !this.driversOut.some(d => d.car === c)) cands.push(c);
+      }
+      for (let k = 0; k < 6 && cands.length; k++) {
+        const c = cands.splice(Math.floor(Math.random() * cands.length), 1)[0];
+        const sh = Math.sin(c.heading), ch = Math.cos(c.heading), off = c.wid / 2 + 0.45;
+        const x = c.x - ch * off, z = c.z + sh * off;
+        if (w.carAt(x, z, 0.35) || w.neighbors(x, z, 1).length) continue;
+        free.car = c; free.t = 10 + Math.random() * 8; free.said = false;
+        break;
+      }
+    }
+
     groundY(x, z) {
       return this.world.map.isRoad(x, z) ? 0 : CURB_H;
     }
@@ -735,6 +773,14 @@
       this.vendor.visible = false;
       R.add(this.vendor);
       this.vendorState = { on: false, readyAt: 25 };   // לפי שעון המשחק
+      // נהגים שיוצאים מהמכונית בפקק ארוך (עד שניים בבת אחת)
+      const dmat = this.mat(new T.MeshLambertMaterial({ vertexColors: true }));
+      this.driversOut = [0xf1efe8, 0x86a8cf].map(shirt => {
+        const m = new T.Mesh(M.driverOut(shirt), dmat);
+        m.castShadow = true; m.visible = false; R.add(m);
+        return { mesh: m, car: null, t: 0, said: false };
+      });
+      this.driverNextT = 40;
       const mkGeo = new T.RingGeometry(0.9, 1.2, 32); mkGeo.rotateX(-Math.PI / 2);
       this.marker = new T.Mesh(mkGeo, this.mat(new T.MeshBasicMaterial({ color: 0x5ee37a, transparent: true, opacity: 0, depthWrite: false })));
       this.marker.renderOrder = 3;
@@ -1016,6 +1062,7 @@
       this.pendGold.count = pg; this.pendGold.instanceMatrix.needsUpdate = true;
 
       this.updateVendor(dtReal);
+      this.updateDriversOut(dtReal);
 
       // ---- סמן יעד ----
       if (this.markerT > 0) {
