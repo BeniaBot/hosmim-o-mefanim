@@ -97,6 +97,12 @@
       $('money').textContent = U.fmtNum(w.money[side]);
       $('income').textContent = '+' + w.income[side].toFixed(1) + ' לשנייה';
       $('meterVal').textContent = Math.floor(w.H);
+      if (this.lastH !== undefined && Math.abs(w.H - this.lastH) >= 1.5) {
+        const mb = $('meterBox');
+        mb.classList.remove('pulse', 'pulseDown'); void mb.offsetWidth;
+        mb.classList.add(w.H > this.lastH ? 'pulse' : 'pulseDown');
+      }
+      this.lastH = w.H;
       $('meterFill').style.width = w.H.toFixed(1) + '%';
       const r = $('meterRate');
       const pol = side === 'police';
@@ -166,9 +172,11 @@
       // מזרימים קהל לפי מספר המפגינים על הכביש
       let onRoad = 0;
       for (const p of w.people) if (p.side === 'protest' && (p.state === 'free' || p.state === 'held') && w.map.isRoad(p.x, p.z)) onRoad++;
-      HM.Audio.setCrowd(onRoad);
+      const playing = this.g.mode === 'play' && !w.outcome;
+      HM.Audio.setCrowd(playing ? onRoad : 0);
+      HM.Audio.setHum(playing);
       const spraying = w.squads.some(s => s.vehicle && s.vehicle.spray);
-      HM.Audio.setSpray(spraying);
+      HM.Audio.setSpray(playing && spraying);
     }
 
     squadState(sq) {
@@ -455,7 +463,7 @@
           case 'ambIncoming': {
             const arm = w.map.arms[e.arm];
             this.alert(`אמבולנס בדרך${arm ? ' — ' + arm.name : ''}. לא לחסום אותו!`, 'info', 'ambulance', 'ambin');
-            A.siren();
+            A.ambSiren();
             break;
           }
           case 'ambBlocked':

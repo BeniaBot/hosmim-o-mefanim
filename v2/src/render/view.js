@@ -412,22 +412,22 @@
       pm.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
       pm.castShadow = true;
       R.add(pm);
-      // כבלים: מנקודות לאורך החצי העליון של התורן אל שולי הכביש מערבה
-      const cm = this.mat(new T.MeshBasicMaterial({ color: 0xe8ecef }));
-      const N = 18;
+      // כבלים: מנקודות לאורך החצי העליון של התורן אל שולי הכביש מערבה (גיאומטריה אחת ממוזגת)
+      const N = 18, cables = [];
+      const up = new T.Vector3(0, 1, 0), q = new T.Quaternion(), e = new T.Euler();
       for (let i = 0; i < N; i++) {
         const t = 0.45 + 0.55 * i / (N - 1);
         const a = new T.Vector3(base.x + dir.x * H * t, dir.y * H * t, base.z + dir.z * H * t);
         for (const side of [-1, 1]) {
           const b2 = new T.Vector3(-108 - i * 5.2, 1.2, r.c + side * (r.halfW + 0.2));
           const len = a.distanceTo(b2);
-          const cg = M.cyl(0.05, 0.05, len, 4);
-          const c = new T.Mesh(cg, cm);
-          c.position.copy(a).add(b2).multiplyScalar(0.5);
-          c.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), b2.clone().sub(a).normalize());
-          R.add(c);
+          q.setFromUnitVectors(up, b2.clone().sub(a).normalize());
+          e.setFromQuaternion(q);
+          const mid = a.clone().add(b2).multiplyScalar(0.5);
+          cables.push(M.part(M.cyl(0.05, 0.05, len, 4), 0xe8ecef, mid.x, mid.y, mid.z, e.x, e.y, e.z));
         }
       }
+      R.add(new T.Mesh(M.merge(cables), this.mat(new T.MeshBasicMaterial({ vertexColors: true }))));
       // מעקה לבן לאורך "הגשר"
       for (const side of [-1, 1]) parts.push(M.part(M.box(110, 1.1, 0.25), 0xf4f4f2, -158, 0.55, r.c + side * (r.halfW + 0.25)));
       const rail = new T.Mesh(M.merge(parts), this.mat(new T.MeshLambertMaterial({ vertexColors: true })));

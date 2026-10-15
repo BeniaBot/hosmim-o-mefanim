@@ -52,6 +52,26 @@
       n2.connect(hp); hp.connect(g2); g2.connect(this.master);
       n2.start();
       this.spray = g2;
+      // זמזום עיר רחוק (תנועה) — שקט מאוד, נותן תחושת מקום
+      const n3 = this.noise();
+      const lp3 = c.createBiquadFilter(); lp3.type = 'lowpass'; lp3.frequency.value = 180;
+      const g3 = c.createGain(); g3.gain.value = 0;
+      n3.connect(lp3); lp3.connect(g3); g3.connect(this.master);
+      n3.start();
+      this.hum = g3;
+    },
+    setHum(on) { if (this.hum) this.hum.gain.setTargetAtTime(on ? 0.05 : 0, this.ctx.currentTime, 0.8); },
+    // סירנת אמבולנס: שני טונים מתחלפים
+    ambSiren() {
+      if (!this.ok()) return;
+      const c = this.ctx, t = c.currentTime + 0.01;
+      const o = c.createOscillator(); o.type = 'triangle';
+      const g = c.createGain();
+      for (let k = 0; k < 6; k++) o.frequency.setValueAtTime(k % 2 ? 660 : 880, t + k * 0.42);
+      o.connect(g); g.connect(this.master);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.04, t + 0.1);
+      g.gain.setValueAtTime(0.04, t + 2.4); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.6);
+      o.start(t); o.stop(t + 2.7);
     },
     setCrowd(level) {
       if (!this.crowd) return;
@@ -175,7 +195,7 @@
         o.start(t + i * 0.16); o.stop(t + i * 0.16 + 1.0);
       });
     },
-    stopAll() { this.setCrowd(0); this.setSpray(false); }
+    stopAll() { this.setCrowd(0); this.setSpray(false); this.setHum(false); }
   };
 
   HM.Audio = A;
