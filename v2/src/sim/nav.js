@@ -5,7 +5,8 @@
   const HM = root.HM || (root.HM = {});
 
   class Grid {
-    constructor(map, cell, walkFn) {
+    // minClear: לרכבים — מסלול שמתרחק משפת המדרכה (מרחק בתאים מהתא החסום הקרוב)
+    constructor(map, cell, walkFn, minClear) {
       const b = map.bounds;
       this.cell = cell;
       this.x0 = b.x0; this.z0 = b.z0;
@@ -20,6 +21,24 @@
       }
       // מבני עזר ל-A* (מוקצים פעם אחת)
       const n = this.w * this.h;
+      this.minClear = minClear || 0;
+      if (this.minClear) {
+        // מרחק (בתאים, שמונה כיוונים) לתא החסום הקרוב — סריקה לרוחב מכל התאים החסומים
+        const clr = this.clear = new Uint8Array(n).fill(255);
+        const q = new Int32Array(n);
+        let qh = 0, qt = 0;
+        for (let k = 0; k < n; k++) if (!this.walk[k]) { clr[k] = 0; q[qt++] = k; }
+        while (qh < qt) {
+          const k = q[qh++], i = k % this.w, j = (k - i) / this.w, nv = clr[k] + 1;
+          if (nv > this.minClear) continue;
+          for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+            const ni = i + di, nj = j + dj;
+            if (ni < 0 || nj < 0 || ni >= this.w || nj >= this.h) continue;
+            const m = nj * this.w + ni;
+            if (clr[m] > nv) { clr[m] = nv; q[qt++] = m; }
+          }
+        }
+      }
       this.g = new Float32Array(n);
       this.parent = new Int32Array(n);
       this.stamp = new Uint32Array(n);
@@ -34,14 +53,18 @@
     isWalkable(x, z) { return this.ok(this.ci(x), this.cj(z)); }
     center(i, j) { return { x: this.x0 + (i + 0.5) * this.cell, z: this.z0 + (j + 0.5) * this.cell }; }
 
-    // קו ראייה בין שתי נקודות (דגימה בצעדים של חצי תא)
+    // קו ראייה בין שתי נקודות (דגימה בצעדים של חצי תא).
+    // ברשת רכבים: הקו גם שומר מרחק משפת המדרכה, חוץ מליד הקצוות (יציאה מחניה וכד')
     los(ax, az, bx, bz) {
       const dx = bx - ax, dz = bz - az;
       const L = Math.sqrt(dx * dx + dz * dz);
       const n = Math.ceil(L / (this.cell * 0.5));
+      const mc = this.minClear, edge = 2.5 / Math.max(L, 0.001);
       for (let k = 1; k <= n; k++) {
         const t = k / n;
-        if (!this.isWalkable(ax + dx * t, az + dz * t)) return false;
+        const x = ax + dx * t, z = az + dz * t;
+        if (!this.isWalkable(x, z)) return false;
+        if (mc && t > edge && t < 1 - edge && this.clear[this.cj(z) * this.w + this.ci(x)] < mc) return false;
       }
       return true;
     }
@@ -66,10 +89,11 @@
 
     // A* עם שמונה שכנים. מחזיר רשימת נקודות (בלי נקודת ההתחלה), מוחלקת.
     path(ax, az, bx, bz) {
+      this.found = true;
       if (this.los(ax, az, bx, bz)) return [{ x: bx, z: bz }];
       const s = this.nearestWalkable(ax, az), t = this.nearestWalkable(bx, bz);
       const si = this.ci(s.x), sj = this.cj(s.z), ti = this.ci(t.x), tj = this.cj(t.z);
-      if (!this.ok(si, sj) || !this.ok(ti, tj)) return [{ x: bx, z: bz }];
+      if (!this.ok(si, sj) || !this.ok(ti, tj)) { this.found = false; return [{ x: bx, z: bz }]; }
       const W = this.w;
       this.cur++;
       const cur = this.cur, g = this.g, parent = this.parent, stamp = this.stamp, closed = this.closed;
@@ -126,13 +150,15 @@
           if (di && dj && (!this.ok(i + di, j) || !this.ok(i, j + dj))) continue; // לא חותכים פינות
           const nIdx = nj * W + ni;
           if (closed[nIdx] === cur) continue;
-          const ng = g[idx] + (di && dj ? 1.4142 : 1);
+          let ng = g[idx] + (di && dj ? 1.4142 : 1);
+          if (this.minClear && this.clear[nIdx] < this.minClear) ng += 2.5 * (this.minClear - this.clear[nIdx]);
           if (stamp[nIdx] !== cur || ng < g[nIdx]) {
             stamp[nIdx] = cur; g[nIdx] = ng; parent[nIdx] = idx;
             push(nIdx, ng + hfun(ni, nj));
           }
         }
       }
+      this.found = found;
       if (!found) return [{ x: t.x, z: t.z }];
       const cells = [];
       for (let k = goal; k !== -1; k = parent[k]) cells.push(k);
@@ -158,7 +184,7 @@
   function buildNav(map) {
     const foot = new Grid(map, 1, (x, z) => !map.inBuilding(x, z, 0.45));
     const inZone = (x, z) => map.vehicleZones.some(p => x >= p.x0 && x <= p.x1 && z >= p.z0 && z <= p.z1);
-    const car = new Grid(map, 1, (x, z) => !map.inBuilding(x, z, 1.4) && (map.isRoad(x, z) || inZone(x, z)));
+    const car = new Grid(map, 1, (x, z) => !map.inBuilding(x, z, 1.4) && (map.isRoad(x, z) || inZone(x, z)), 2);
     return { foot, car };
   }
 

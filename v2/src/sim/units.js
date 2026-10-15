@@ -203,10 +203,14 @@
       else { nx = p.x; nz = p.z; p.vx = p.vz = 0; }
     }
     // לא עוברים דרך מכוניות — מחליקים לאורכן
-    const rr = p.kind === 'rider' ? 0.9 : 0.25;
-    if ((nx !== p.x || nz !== p.z) && world.carAt(nx, nz, rr) && !world.carAt(p.x, p.z, rr)) {
-      if (!world.carAt(nx, p.z, rr)) { nz = p.z; p.vz = 0; }
-      else if (!world.carAt(p.x, nz, rr)) { nx = p.x; p.vx = 0; }
+    // squeezeT: מי שתקוע כבר כמה שניות נדחק צמוד לפח (בלי מרווח ביטחון)
+    const rr = p.squeezeT > 0 ? 0 : p.kind === 'rider' ? 0.9 : 0.25;
+    // כבר צמודים למכונית: מותר לזוז, אבל לא להיכנס לתוך הגוף שלה. מי שבתוך גוף (נדיר) — יוצא חופשי
+    const moving = nx !== p.x || nz !== p.z;
+    const rCheck = rr > 0 && world.carAt(p.x, p.z, rr) ? 0 : rr;
+    if (moving && world.carAt(nx, nz, rCheck) && !world.carAt(p.x, p.z, 0)) {
+      if (!world.carAt(nx, p.z, rCheck)) { nz = p.z; p.vz = 0; }
+      else if (!world.carAt(p.x, nz, rCheck)) { nx = p.x; p.vx = 0; }
       else { nx = p.x; nz = p.z; p.vx = p.vz = 0; }
     }
     p.x = nx; p.z = nz;
@@ -216,24 +220,73 @@
     return d;
   }
 
-  // הליכה עם מסלול (לשוטרים שרודפים / גוררים)
+  // מסלול הליכה שעוקף מכוניות עומדות (מסמנים אותן זמנית כחסומות ברשת ההליכה).
+  // בלי זה הולך ומכונית יכולים לחכות זה לזה לנצח: המכונית עוצרת בגללו, והוא רוצה לעבור דרכה.
+  function footPathAroundCars(world, ax, az, bx, bz) {
+    const foot = world.nav.foot, saved = [];
+    for (const lane of world.traffic.lanes) {
+      const L = lane.L;
+      for (const c of lane.cars) {
+        if (c.v > 1) continue;
+        const mid = world.map.lanePos(L, c.d - c.len / 2);
+        if ((mid.x - ax) * (mid.x - ax) + (mid.z - az) * (mid.z - az) > 40 * 40) continue;
+        for (let s = 0; s <= c.len; s += 0.7) {
+          const q = world.map.lanePos(L, c.d - s);
+          // צפוף מספיק לרוחב (תא = 1 מ') — אחרת נשאר "מעבר" דרך אמצע אוטובוס
+          for (let o = -c.wid / 2; o <= c.wid / 2 + 0.01; o += c.wid / Math.ceil(c.wid / 0.6)) {
+            const x = q.x + (L.axis === 'z' ? o : 0), z = q.z + (L.axis === 'x' ? o : 0);
+            if ((x - ax) * (x - ax) + (z - az) * (z - az) < 1.4 * 1.4) continue;
+            const i = foot.ci(x), j = foot.cj(z);
+            if (!foot.ok(i, j)) continue;
+            const k = j * foot.w + i;
+            foot.walk[k] = 0; saved.push(k);
+          }
+        }
+      }
+    }
+    const path = foot.path(ax, az, bx, bz);
+    const found = foot.found;
+    for (const k of saved) foot.walk[k] = 1;
+    return found ? path : null;
+  }
+
+  // הליכה עם מסלול (לשוטרים שרודפים / גוררים, ולמי שחוזר הביתה)
   function walkTo(world, p, tx, tz, speed, dt, stopDist) {
     const foot = world.nav.foot;
     p.pathT -= dt;
     const goalMoved = !p.pathGoal || U.dist2(p.pathGoal.x, p.pathGoal.z, tx, tz) > 4;
     if (!p.path || (goalMoved && p.pathT <= 0)) {
+      if (!p.path) p.stuckT = 0;   // הליכה חדשה — מתחילים למדוד תקיעה מאפס
       p.path = foot.path(p.x, p.z, tx, tz);
       p.pathI = 0; p.pathT = 1.0; p.pathGoal = { x: tx, z: tz };
+      p.bestD = null; p.noProg = 0;
     }
     let wx = tx, wz = tz, final = true;
     if (p.path && p.pathI < p.path.length - 1) {
       const w = p.path[p.pathI];
-      if (U.dist2(p.x, p.z, w.x, w.z) < 1.2) p.pathI++;
+      if (U.dist2(p.x, p.z, w.x, w.z) < 1.2) { p.pathI++; p.bestD = null; p.noProg = 0; p.stuckT = 0; }
       if (p.pathI < p.path.length - 1) { wx = p.path[p.pathI].x; wz = p.path[p.pathI].z; final = false; }
     }
     // מרחק העצירה חל רק על היעד הסופי — לא על נקודות ביניים במסלול
     steer(world, p, wx, wz, speed, dt, final ? stopDist : 0.1);
-    return final && U.dist(p.x, p.z, tx, tz) <= (stopDist || 0.12) + 0.6;
+    const dLeft = U.dist(p.x, p.z, tx, tz);
+    const done = final && dLeft <= (stopDist || 0.12) + 0.6;
+    // תקועים (מכונית / קיר / אנשים) — מחפשים מסלול חדש מסביב
+    const dw = U.dist(p.x, p.z, wx, wz);
+    if (p.squeezeT > 0) p.squeezeT -= dt;
+    if (p.bestD == null) p.bestD = dw;   // נקודת ביניים חדשה — מודדים ממנה (בלי לאפס את זמן התקיעה)
+    else if (done || dw < p.bestD - 0.25) { p.bestD = dw; p.noProg = 0; p.stuckT = 0; }
+    else {
+      p.noProg = (p.noProg || 0) + dt;
+      p.stuckT = (p.stuckT || 0) + dt;
+      if (p.noProg > 1.6) {
+        p.noProg = 0; p.bestD = null;
+        const np = footPathAroundCars(world, p.x, p.z, tx, tz);
+        p.path = np || foot.path(p.x, p.z, tx, tz); p.pathI = 0; p.pathT = 2.5; p.pathGoal = { x: tx, z: tz };
+        if (!np || p.stuckT > 4) p.squeezeT = 3;
+      }
+    }
+    return done;
   }
 
   // ---------- עדכון חוליה ----------
@@ -264,6 +317,13 @@
     if (sq.moving && sq.path) {
       const c = centroid(sq);
       const lead = U.dist(sq.anchor.x, sq.anchor.z, c.x, c.z);
+      // הנקודה המובילה מחכה לחוליה יותר מדי זמן — כנראה מכונית בדרך: מסלול חדש מסביב
+      sq.waitT = lead >= 3.2 ? (sq.waitT || 0) + dt : 0;
+      if (sq.waitT > 2.5) {
+        sq.waitT = 0;
+        const np = footPathAroundCars(world, c.x, c.z, sq.goal.x, sq.goal.z);
+        if (np) { sq.path = np; sq.pathI = 0; sq.anchor = { x: c.x, z: c.z }; }
+      }
       if (lead < 3.2) {
         let step = squadSpeed(world, sq) * dt;
         while (step > 0 && sq.pathI < sq.path.length) {
@@ -299,6 +359,13 @@
     const sq = p.squad, B = world.BAL;
     switch (p.state) {
       case 'free': {
+        // שוחרר מידי שוטר אחרי שהחוליה שלו כבר התפרקה — הולך הביתה (לא נשאר חוסם "בלי חוליה")
+        if (sq.broken && sq.side === 'protest') {
+          p.state = 'home'; p.sit = 0; p.path = null;
+          const mi = sq.members.indexOf(p);
+          if (mi >= 0) sq.members.splice(mi, 1);
+          break;
+        }
         const t = memberTarget(world, sq, p);
         let speed = squadSpeed(world, sq);
         if (t.run) speed *= B.people.fleeSpeedMul;
@@ -311,7 +378,7 @@
             p.vx = p.vz = 0;
             // מתיישבים בדיוק במקום שלהם בשורה (שלא יישארו פרצות)
             const k = Math.min(1, dt * 3);
-            if (d < 1.0) { p.x += (t.x - p.x) * k; p.z += (t.z - p.z) * k; }
+            if (d < 1.0 && !world.carAt(t.x, t.z, 0.3)) { p.x += (t.x - p.x) * k; p.z += (t.z - p.z) * k; }
             if (p.sit < 1) p.face = U.turnToward(p.face, sitFacing(world, sq, p), 4 * dt);
             break;
           }
@@ -349,17 +416,24 @@
         } else {
           p.state = 'home';
         }
+        if (p.state === 'returning' && p.stuckT > 25) { p.state = 'home'; p.stuckT = 0; }
         break;
       }
       case 'home': {
         const b = world.map.bases.protest;
-        if (walkTo(world, p, b.x, b.z, 2.4, dt, 1.5)) p.state = 'gone';
+        // תקועים הרבה זמן בדרך הביתה — "הולכים מסביב" ויוצאים מהמשחק
+        if (walkTo(world, p, b.x, b.z, 2.4, dt, 1.5) || p.stuckT > 25) p.state = 'gone';
         break;
       }
       // ----- שוטרים -----
       case 'seek': {
         const v = p.victim;
         if (!v || (v.state !== 'free' && v.state !== 'held') || v.squad.fleeT > 0 && v.state === 'free' && U.dist(p.x, p.z, v.x, v.z) > 8) {
+          dropVictim(p); p.state = 'free'; break;
+        }
+        // לא מצליחים להגיע אליו (מכוניות סוגרות עליו) — מוותרים עליו לזמן מה ובוחרים מישהו אחר
+        if (p.stuckT > 8) {
+          p.avoidId = v.id; p.avoidUntil = world.t + 20; p.stuckT = 0;
           dropVictim(p); p.state = 'free'; break;
         }
         if (walkTo(world, p, v.x, v.z, sq.cfg.speed * 1.1, dt, 0.85)) {
@@ -372,6 +446,12 @@
       case 'grab': {
         const v = p.victim;
         if (!v || v.state !== 'held') { dropVictim(p); p.state = 'free'; break; }
+        // יושב שצריך שני שוטרים ואף שותף לא בדרך — משחררים (אחרת כל השוטרים "תופסים" לבד לנצח)
+        const need = grabNeed(world, v);
+        if (v.holders.length < need && v.claims.length < need) {
+          p.waitT = (p.waitT || 0) + dt;
+          if (p.waitT > 2.5 + (p.id % 4) * 0.6) { p.waitT = 0; dropVictim(p); p.state = 'free'; break; }
+        } else p.waitT = 0;
         p.vx = p.vz = 0;
         p.face = Math.atan2(v.x - p.x, v.z - p.z);
         break;
@@ -609,7 +689,9 @@
         if (v.state !== 'free' && v.state !== 'held') continue;
         const need = grabNeed(world, v);
         if (v.claims.length >= need) continue;
-        const d = U.dist2(cop.x, cop.z, v.x, v.z);
+        if (cop.avoidId === v.id && world.t < cop.avoidUntil) continue;
+        // עדיפות למי שכבר יש לידו שוטר שמחכה לשותף
+        const d = U.dist2(cop.x, cop.z, v.x, v.z) * (v.claims.length ? 0.15 : 1);
         if (d < bd) { bd = d; best = v; }
       }
       if (best) {
@@ -641,6 +723,13 @@
     }
     if (sq.mode === 'charge') {
       const tgt = world.squadById(sq.target);
+      sq.chargeT = (sq.chargeT || 0) + dt;
+      // שעטה שלא מגיעה לשום מקום (תקועים מאחורי מכוניות) — מוותרים וחוזרים לעמדה
+      if (sq.chargeT > 30) {
+        sq.chargeT = 0; sq.mode = 'regroup'; sq.modeT = 2; sq.target = null;
+        returnToGuard(world, sq);
+        return;
+      }
       if (!tgt || tgt.broken || !tgt.members.length || tgt.fleeT > 0) {
         sq.mode = 'regroup'; sq.modeT = 2; sq.target = null;
         const c = centroid(sq); setGoal(world, sq, c.x, c.z, null);
@@ -709,25 +798,92 @@
     return grid.nearestWalkable(tc.x + dx / d * want, tc.z + dz / d * want);
   }
 
+  // מסלול חדש שעוקף מכוניות עומדות ואנשים (מסמנים אותם זמנית כחסומים ברשת הרכבים)
+  function replanAround(world, V) {
+    if (!V.dest) return false;
+    const grid = world.nav.car, saved = [];
+    const block = (x, z) => {
+      if ((x - V.x) * (x - V.x) + (z - V.z) * (z - V.z) < 9) return;
+      const i = grid.ci(x), j = grid.cj(z);
+      if (!grid.ok(i, j)) return;
+      const k = j * grid.w + i;
+      grid.walk[k] = 0; saved.push(k);
+    };
+    for (const q of world.people) {
+      if (q.side === 'police' || q.state === 'detained' || q.state === 'carried' || q.state === 'gone') continue;
+      if (U.dist2(q.x, q.z, V.x, V.z) > 50 * 50) continue;
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) block(q.x + a * 1.2, q.z + b * 1.2);
+    }
+    for (const lane of world.traffic.lanes) {
+      const L = lane.L;
+      for (const c of lane.cars) {
+        if (c.v > 1) continue;
+        for (let s = -0.4; s <= c.len + 0.4; s += 0.8) {
+          const p = world.map.lanePos(L, c.d - s);
+          const hw = c.wid / 2 + 0.3, n = Math.ceil(hw * 2 / 0.6);
+          for (let k = 0; k <= n; k++) { const o = -hw + k * hw * 2 / n; block(p.x + (L.axis === 'z' ? o : 0), p.z + (L.axis === 'x' ? o : 0)); }
+        }
+      }
+    }
+    const path = grid.path(V.x, V.z, V.dest.x, V.dest.z);
+    if (grid.found) { V.path = path; V.pathI = 0; }
+    for (const k of saved) grid.walk[k] = 1;
+    return grid.found;
+  }
+
   function driveVehicle(world, V, speed, dt) {
     if (!V.path || V.pathI >= V.path.length) { V.v = U.approach(V.v, 0, 6 * dt); return true; }
     const w = V.path[V.pathI];
     const dx = w.x - V.x, dz = w.z - V.z, d = Math.sqrt(dx * dx + dz * dz);
     const last = V.pathI === V.path.length - 1;
     if (d < (last ? 0.8 : 2.0)) { V.pathI++; return V.pathI >= V.path.length; }
-    const want = Math.atan2(dx, dz);
+    let want = Math.atan2(dx, dz);
+    let target = speed * (last ? Math.min(1, d / 6) : 1);
+    // פנייה חדה בנקודה הבאה — מאטים לפני, כדי לא לעלות על המדרכה
+    if (!last && d < 9) {
+      const w2 = V.path[V.pathI + 1];
+      const turn = Math.abs(U.wrapAngle(Math.atan2(w2.x - w.x, w2.z - w.z) - want));
+      if (turn > 0.4) target = Math.min(target, Math.max(2, speed * (1 - turn / Math.PI * 1.3)));
+    }
+    // מכונית תקועה מקדימה — עוקפים מהצד הפנוי; אם אין צד פנוי — מחכים מאחוריה
+    const hx = Math.sin(V.heading), hz = Math.cos(V.heading);
+    let blockedByCar = !!world.carAt(V.x + hx * 4.6, V.z + hz * 4.6, 0.5);
+    if (blockedByCar) {
+      const grid = world.nav.car;
+      for (const side of (V.passSide ? [V.passSide, -V.passSide] : [1, -1])) {
+        const ox = V.x + hx * 5 + hz * side * 3.2, oz = V.z + hz * 5 - hx * side * 3.2;
+        if (!grid.isWalkable(ox, oz) || world.carAt(ox, oz, 0.9) || world.carAt(V.x + hz * side * 3, V.z - hx * side * 3, 0.6)) continue;
+        want = Math.atan2(ox - V.x, oz - V.z);
+        target = Math.min(target, speed * 0.6);
+        V.passSide = side; V.passT = 1.2;
+        blockedByCar = false;
+        break;
+      }
+    } else if (V.passT > 0) {
+      V.passT -= dt;
+      if (V.passT <= 0) V.passSide = 0;
+    }
     V.heading = U.turnToward(V.heading, want, 1.6 * dt);
     const align = Math.cos(U.wrapAngle(want - V.heading));
-    const target = speed * Math.max(0.15, align) * (last ? Math.min(1, d / 6) : 1);
-    V.v = U.approach(V.v, target, 4 * dt);
-    // לא דורסים: עוצרים אם יש אדם ממש מקדימה
+    target *= Math.max(0.15, align);
     const fx = V.x + Math.sin(V.heading) * 4.2, fz = V.z + Math.cos(V.heading) * 4.2;
+    // לא נכנסים לתוך מכונית (גם לא מהצד בזמן עקיפה)
+    if (world.carAt(fx * 0.55 + V.x * 0.45, fz * 0.55 + V.z * 0.45, 0.35)) blockedByCar = true;
+    // לא דורסים: עוצרים אם יש אדם ממש מקדימה (שוטרים זזים הצידה)
+    let personBlock = false;
     for (const q of world.neighbors(fx, fz, 2.4)) {
-      if (q.state === 'carried' || q.state === 'detained' || q.side === 'police') continue;   // שוטרים זזים הצידה
-      if (U.dist2(q.x, q.z, fx, fz) < 2.4 * 2.4) { V.v = Math.min(V.v, 0); break; }
+      if (q.state === 'carried' || q.state === 'detained' || q.side === 'police') continue;
+      if (U.dist2(q.x, q.z, fx, fz) < 2.4 * 2.4) { personBlock = true; break; }
     }
-    // רכב אזרחי ממש מקדימה — מאטים (המכוניות מפנות דרך לאט)
-    if (world.carAt(fx, fz, 0.6)) V.v = Math.min(V.v, 0.8);
+    V.replanT = (V.replanT || 0) - dt;
+    if (blockedByCar || personBlock) {
+      // תקועים: מחפשים מסלול אחר מסביב (פעם בכמה שניות). מול מכוניות בלי מוצא — אחרי רגע נדחקים לאט (הנהגים מפנים)
+      V.blockT = (V.blockT || 0) + dt;
+      if (V.blockT > 1.5 && V.replanT <= 0) { V.replanT = 4; replanAround(world, V); }
+      target = blockedByCar && !personBlock && V.blockT > 2.5 ? Math.min(target, 1.6) : 0;
+    } else if (V.v > 1.5) V.blockT = 0;
+    V.v = U.approach(V.v, target, (target < V.v ? 7 : 4) * dt);
+    if (personBlock) V.v = 0;
     V.x += Math.sin(V.heading) * V.v * dt;
     V.z += Math.cos(V.heading) * V.v * dt;
     return false;
@@ -755,13 +911,14 @@
         break;
       case 'drive': {
         const tgt = sq.target ? world.squadById(sq.target) : null;
+        if (!tgt || tgt.broken || !tgt.members.length) { V.state = 'idle'; sq.target = null; V.v = 0; break; }
         const arrived = driveVehicle(world, V, C.speed, dt);
-        if (tgt && tgt.members.length) {
-          const tc = centroid(tgt);
-          const d = U.dist(V.x, V.z, tc.x, tc.z);
-          if (d < C.range - 2 && (arrived || d < 11)) { V.state = 'spray'; V.v = 0; }
-          else if (arrived) { V.fire = cannonFirePoint(world, sq, tgt); vehicleGo(world, sq, V.fire.x, V.fire.z); }
-        } else if (arrived) { V.state = 'idle'; sq.target = null; }
+        const tc = centroid(tgt);
+        const d = U.dist(V.x, V.z, tc.x, tc.z);
+        // עומדים (פקק/אנשים בדרך) והמטרה כבר בטווח — מתיזים מכאן
+        V.stillT = V.v < 0.3 ? (V.stillT || 0) + dt : 0;
+        if (d < C.range - 2 && (arrived || d < 11 || V.stillT > 1)) { V.state = 'spray'; V.v = 0; V.stillT = 0; }
+        else if (arrived) { V.fire = cannonFirePoint(world, sq, tgt); vehicleGo(world, sq, V.fire.x, V.fire.z); }
         break;
       }
       case 'spray': {

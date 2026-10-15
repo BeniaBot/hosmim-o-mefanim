@@ -94,11 +94,10 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.keyboard.press('Escape');
   check('Esc clears selection (not pause)', (await ev(() => HM.Game.input.selected.size)) === 0 && (await ev(() => HM.Game.mode)) === 'play');
   // הרשימה (כשאין בחירה) מתעדכנת כשנוספת חוליה
-  const chips0 = await p.$$eval('#selEmpty .rosterChip', els => els.length);
-  await ev(() => { const w = HM.Game.world; w.money.protest += 500; return w.cmd('protest', { type: 'buy', unit: 'bochurim' }).ok; });
-  await p.waitForTimeout(400);
-  const chips1 = await p.$$eval('#selEmpty .rosterChip', els => els.length);
-  check('roster updates while nothing is selected', chips1 === chips0 + 1, { chips0, chips1 });
+  const newNum = await ev(() => { const w = HM.Game.world; w.money.protest += 500; const before = new Set(w.squads.map(s => s.id)); w.cmd('protest', { type: 'buy', unit: 'bochurim' }); const s = w.squads.find(q => !before.has(q.id)); return s ? s.num : null; });
+  await p.waitForFunction((n) => [...document.querySelectorAll('#selEmpty .rosterChip .num')].some(e => +e.textContent === n), newNum, { timeout: 4000 }).catch(() => {});
+  const nums = await p.$$eval('#selEmpty .rosterChip .num', els => els.map(e => +e.textContent));
+  check('roster updates while nothing is selected', newNum !== null && nums.includes(newNum), { newNum, nums });
   await p.mouse.move(5, 300); await p.mouse.down(); await p.mouse.move(1360, 560, { steps: 5 }); await p.mouse.up();
   const boxSel = await ev(() => HM.Game.input.selected.size);
   check('drag box selects several squads', boxSel >= 2, boxSel);
@@ -164,13 +163,31 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   await p.click('#btnStart');
   await p.waitForTimeout(500);
   await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
-  await p.waitForTimeout(2500);
+  await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 8000 }).catch(() => {});
   check('reaching 100 shows a win end screen', await visible('end') && (await p.textContent('#endTitle')).includes('בכותרות'), await p.textContent('#endTitle'));
   check('win shows stars', (await ev(() => document.querySelectorAll('#endStars .off').length)) < 3);
   await p.screenshot({ path: OUT + '/ui-win.png' });
   await p.click('#btnEndMenu');
   await p.waitForTimeout(500);
   check('end "to menu" button works', await visible('menu'));
+  check('map unlocked by this win is clickable right away', await ev(() => !document.querySelector('#mapSeg [data-map="kvish4"]').disabled));
+
+  // ---- אחרי סוף המשחק: אין הפסקה, ומסך סיום ישן לא קופץ על התפריט ----
+  await p.click('#btnStart');
+  await p.waitForTimeout(500);
+  await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
+  await p.waitForTimeout(100);
+  await p.keyboard.press('Escape');
+  check('no pause after the game is decided', !(await visible('pause')));
+  await p.waitForFunction(() => !document.getElementById('end').classList.contains('hidden'), null, { timeout: 8000 }).catch(() => {});
+  check('end screen still arrives after Esc', await visible('end'));
+  await p.click('#btnAgain');
+  await p.waitForTimeout(400);
+  await ev(() => { HM.Game.world.addHeadline(100, 'test', 0, 0); });
+  await p.waitForTimeout(150);
+  await ev(() => HM.Game.toMenu());
+  await p.waitForTimeout(2000);
+  check('stale end screen does not cover the menu', await visible('menu') && !(await visible('end')) && (await ev(() => HM.Game.mode)) === 'menu');
 
   // ---- התקדמות: מפות נעולות עד ניצחון ----
   check('Route 4 locked before any win', await ev(() => { localStorage.removeItem('hm2-prog'); HM.Game.updateMapButtons(); return document.querySelector('#mapSeg [data-map="kvish4"]').disabled; }));
@@ -203,7 +220,7 @@ function check(name, ok, info) { results.push({ name, ok: !!ok, info }); console
   const tg = await ev(() => { const id = [...HM.Game.input.selected][0]; return HM.Game.world.squadById(id).target; });
   check('click on protesters sets police target', tg === enemy.id, { tg, want: enemy.id });
   await ff(8);
-  check('cops go to work (seek/grab/drag)', await ev(() => HM.Game.world.people.some(c => c.kind === 'cop' && (c.state === 'seek' || c.state === 'grab' || c.state === 'drag'))), await ev(() => HM.Game.world.people.filter(c => c.kind === 'cop').map(c => c.state + (c.squad.target ? '*' : '')).join()));
+  check('cops go to work (seek/grab/drag, or stopped by an askan permit)', await ev(() => HM.Game.world.people.some(c => c.kind === 'cop' && (c.state === 'seek' || c.state === 'grab' || c.state === 'drag' || (c.state === 'stalled' && c.squad.target)))), await ev(() => HM.Game.world.people.filter(c => c.kind === 'cop').map(c => c.state + (c.squad.target ? '*' : '')).join()));
   await ev(() => { HM.Game.world.money.police = 3000; });
   await p.keyboard.press('KeyX');
   await p.keyboard.press('KeyC');

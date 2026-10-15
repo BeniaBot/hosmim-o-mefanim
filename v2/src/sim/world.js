@@ -290,7 +290,7 @@
               n++;
             } else if (s.type === 'horses') {
               if (s.mode === 'regroup' && s.modeT > 0) continue;
-              s.target = tgt.id; s.mode = 'charge';
+              s.target = tgt.id; s.mode = 'charge'; s.chargeT = 0;
               const tc = U2.centroid(tgt); U2.setGoal(this, s, tc.x, tc.z, null);
               n++;
             } else if (s.type === 'cannon') {

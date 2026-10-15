@@ -811,8 +811,30 @@
           setM(this.brakes, bri++, bx - ox, 0.72, bz - oz, heading, 0, 0, 1);
         }
       };
+      // מכוניות "מפנות דרך" למכת"זית ולאמבולנס: זזות הצידה בציור כשהרכב הגדול עובר לידן
+      const pushers = this._pushers || (this._pushers = []);
+      pushers.length = 0;
+      for (const sq of w.squads) if (sq.vehicle) pushers.push({ x: sq.vehicle.x, z: sq.vehicle.z, h: sq.vehicle.heading, l: 6.2, wd: 2.6 });
+      if (w.amb) for (const a of w.amb.list) pushers.push({ x: a.x, z: a.z, h: a.heading, l: 5.6, wd: 2.2 });
+      const nudge = this.nudge || (this.nudge = new Map());
       for (const c of w.traffic.cars) {
-        const x = U.lerp(c.px, c.x, alpha), z = U.lerp(c.pz, c.z, alpha);
+        let x = U.lerp(c.px, c.x, alpha), z = U.lerp(c.pz, c.z, alpha);
+        if (c.type !== 'tram') {
+          const sh = Math.sin(c.heading), ch = Math.cos(c.heading);
+          let want = 0;
+          for (const pu of pushers) {
+            const ex = pu.x - x, ez = pu.z - z;
+            const along = ex * sh + ez * ch, lat = ex * ch - ez * sh;
+            const dh = pu.h - c.heading, sd = Math.abs(Math.sin(dh)), cd = Math.abs(Math.cos(dh));
+            const hA = sd * pu.wd / 2 + cd * pu.l / 2, hL = cd * pu.wd / 2 + sd * pu.l / 2;
+            if (Math.abs(along) > c.len / 2 + hA) continue;
+            const need = c.wid / 2 + hL + 0.15 - Math.abs(lat);
+            if (need > 0) want -= Math.sign(lat || 1) * Math.min(need, 1.5);
+          }
+          const prev = nudge.get(c.id) || 0;
+          const cur = U.approach(prev, U.clamp(want, -1.5, 1.5), dtReal * 2.5);
+          if (cur) { nudge.set(c.id, cur); x += ch * cur; z -= sh * cur; } else if (prev) nudge.delete(c.id);
+        }
         const col = c.type === 'taxi' ? 0xf2c230 : (c.type === 'bus' || c.type === 'tram') ? 0xffffff : CAR_COLORS[c.color];
         putCar(c.type, x, z, c.heading, col, c.braking || c.v < 0.3);
       }

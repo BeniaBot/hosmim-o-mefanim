@@ -428,7 +428,7 @@
         switch (e.type) {
           case 'incoming': {
             if (e.side !== 'police') break;
-            const nm = { patrol: 'ניידת שוטרים בדרך', horses: 'פרשים בדרך!', cannon: 'מכת"זית בדרך!' }[e.unit];
+            const nm = { patrol: 'ניידת שוטרים בדרך', horses: 'פרשים בדרך!', cannon: 'מכת"זית בדרך!', riot: 'יס"מ בדרך!', officer: 'קצין קישור בדרך' }[e.unit];
             if (nm) this.alert(`${nm} — מגיעים בעוד ${Math.round(e.eta)} שניות`, mine === 'protest' ? 'warn' : 'info', e.unit === 'patrol' ? 'siren' : e.unit, 'inc' + e.unit);
             A.siren();
             if (e.unit !== 'patrol') this.news(N.policeArrive);
@@ -436,7 +436,7 @@
           }
           case 'arrived':
             if (e.side === 'police') {
-              const nm = { patrol: 'השוטרים הגיעו', horses: 'הפרשים הגיעו', cannon: 'המכת"זית הגיעה' }[e.unit];
+              const nm = { patrol: 'השוטרים הגיעו', horses: 'הפרשים הגיעו', cannon: 'המכת"זית הגיעה', riot: 'היס"מ הגיע', officer: 'קצין הקישור הגיע' }[e.unit];
               if (nm) this.alert(nm + ' — יוצאים מהתחנה', mine === 'protest' ? 'warn' : 'info', e.unit, 'arr' + e.unit);
               if (e.unit === 'horses') A.hooves();
             } else if (e.side === mine && w.t > 1) {

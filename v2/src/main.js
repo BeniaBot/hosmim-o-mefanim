@@ -182,6 +182,7 @@
 
     startGame() {
       HM.Audio.init();
+      clearTimeout(this.endTimer);
       // ?seed=123 בכתובת — משחק שחוזר על עצמו (לבדיקות ולשחזור באגים)
       const qs = /[?&]seed=(\d+)/.exec(root.location.search || '');
       const seed = qs ? +qs[1] : (Math.random() * 1e9) | 0;
@@ -205,6 +206,8 @@
     },
 
     toMenu() {
+      clearTimeout(this.endTimer);
+      this.tutorial = null;
       $('hud').classList.add('hidden');
       HM.Audio.stopAll();
       this.startDemo();
@@ -213,9 +216,11 @@
       this.hud.clearDynamic();
       $('hint').textContent = '';
       this.tutorialHint = null;
+      this.updateStartSum();   // מפה שנפתחה עכשיו — הכפתור שלה נפתח מיד
     },
 
     togglePause() {
+      if (this.mode === 'play' && this.world && this.world.outcome) return;   // המשחק נגמר — מסך הסיום בדרך
       if (this.mode === 'play') { this.mode = 'paused'; showScr('pause'); HM.Audio.stopAll(); }
       else if (this.mode === 'paused') { this.mode = 'play'; showScr(null); }
     },
@@ -382,11 +387,12 @@
       this.view.update(alpha, dtReal, { selected: this.demo ? null : this.input.selected, targetSet: this.input.targetSet });
       this.stage.setDay(w.t / w.sunset);
       if (!this.demo && this.mode !== 'menu') { this.hud.update(dtReal); this.minimap.update(dtReal); }
-      this.tickTutorial(dtReal);
+      if (this.mode === 'play') this.tickTutorial(dtReal);
       if (!this.demo && w.outcome && !this.endShown) {
         this.endShown = true;
         $('hint').textContent = '';
-        setTimeout(() => this.showEnd(w.outcome), 1400);
+        clearTimeout(this.endTimer);
+        this.endTimer = setTimeout(() => { if (this.world === w && !this.demo) this.showEnd(w.outcome); }, 1400);
       }
       HM.Audio.setMood(this.mode !== 'play' || this.demo ? 'menu' : (w.H > 75 || w.sunset - w.t < 60) ? 'tense' : 'game');
       this.adaptQuality(dtReal);

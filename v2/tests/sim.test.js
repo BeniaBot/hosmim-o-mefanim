@@ -398,3 +398,66 @@ test('ambulance: blocking it too long turns the media; clearing the way earns re
   assert.ok(moved, 'ambulance got blocked first');
   assert.ok(respect, 'respect for clearing the way');
 });
+
+test('cops do not lock up when standing avrechim sit down mid-approach (sitters need two cops)', () => {
+  let stuck = 0;
+  for (let s = 1; s <= 6; s++) {
+    const w = newWorld({ seed: s });
+    const x = w.rng.f(-40, 40);
+    const prot = placeSquad(w, 'protest', 'avrechim', x, 0, false);
+    run(w, 5);
+    const pol = U.makeSquad(w, 'police', 'patrol', x + 6, 10);
+    U.setGoal(w, pol, pol.members[0].x, 10);
+    w.cmd('police', { type: 'target', squads: [pol.id], target: prot.id });
+    run(w, 1);
+    w.cmd('protest', { type: 'stance', squads: [prot.id], stance: 'sit' });
+    run(w, 90);
+    if (w.stats.dragged === 0) stuck++;
+  }
+  assert.strictEqual(stuck, 0, 'every run ends with at least one arrest');
+});
+
+test('a member released after his squad broke walks home instead of blocking forever', () => {
+  const w = newWorld();
+  const sq = placeSquad(w, 'protest', 'bochurim', -30, 0, false);
+  run(w, 4);
+  const p = sq.members[0];
+  const cop = U.makeSquad(w, 'police', 'patrol', -30, 6).members[0];
+  // מחזיקים אותו, החוליה מתפרקת, ואז השוטר משחרר
+  p.state = 'held'; p.holders = [cop]; p.claims = [cop]; cop.state = 'grab'; cop.victim = p;
+  U.breakSquad(w, sq);
+  cop.state = 'free'; cop.victim = null;
+  run(w, 1);
+  assert.notStrictEqual(p.state, 'free');
+  assert.ok(p.state === 'home' || p.state === 'gone', p.state);
+  run(w, 60);
+  assert.ok(!w.people.includes(p) || !w.map.isRoad(p.x, p.z), 'left the road');
+});
+
+test('water cannon with a vanished target stops driving (goes idle, then home)', () => {
+  const w = newWorld();
+  const tgt = placeSquad(w, 'protest', 'bochurim', -20, 0, false);
+  const can = U.makeSquad(w, 'police', 'cannon', 30, -31);
+  w.cmd('police', { type: 'target', squads: [can.id], target: tgt.id });
+  run(w, 2);
+  assert.strictEqual(can.vehicle.state, 'drive');
+  for (const m of tgt.members) m.state = 'gone';
+  tgt.members.length = 0;
+  run(w, 1);
+  assert.notStrictEqual(can.vehicle.state, 'drive');
+});
+
+test('cars wait before the crosswalk when someone stands just past it (crosswalk stays open)', () => {
+  const w = newWorld({ map: 'kvish4' });
+  // מישהו עומד בנתיב מערבה, מעט אחרי מעבר החציה (x=0, רוחב 6)
+  const sq = placeSquad(w, 'protest', 'askan', -5.5, -2.4, false);
+  let inside = 0;
+  run(w, 60, () => {
+    for (const lane of w.traffic.lanes) {
+      if (lane.L.axis !== 'x' || lane.L.dir > 0) continue;
+      for (const c of lane.cars) if (c.v < 0.3 && Math.abs(c.z - (-2.4)) < 1 && c.x - c.len / 2 < 3 && c.x + c.len / 2 > -3) inside++;
+    }
+    sq.members[0].x = -5.5; sq.members[0].z = -2.4; sq.members[0].vx = sq.members[0].vz = 0;
+  });
+  assert.strictEqual(inside, 0, 'no stopped car on the crosswalk');
+});

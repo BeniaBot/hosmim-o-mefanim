@@ -298,6 +298,15 @@
       if (sqs.length) HM.Audio.click();
     }
 
+    // חוליות שנשברו / נעצרו כולן לא נשארות "בחורות" בלי שרואים
+    pruneSel() {
+      if (!this.w) return;
+      for (const id of [...this.selected]) {
+        const s = this.w.squadById(id);
+        if (!s || s.broken || !(s.members.length || s.vehicle)) this.selected.delete(id);
+      }
+    }
+
     // ---------- מקלדת ----------
     keyDown(e) {
       const g = this.g;
@@ -307,6 +316,7 @@
       if (e.code === 'Space' || e.code === 'KeyP' || e.code === 'Escape') {
         e.preventDefault();
         if (e.code === 'Escape' && this.aim && g.mode === 'play') { this.aim = null; return; }
+        this.pruneSel();
         if (e.code === 'Escape' && this.selected.size && g.mode === 'play') { this.selected.clear(); g.hud.updateSelection(true); return; }
         g.togglePause();
         return;

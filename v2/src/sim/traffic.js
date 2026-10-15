@@ -172,7 +172,7 @@
           let stop = false, why = 'light';
           if (lightAx !== 'G') {
             const need = (car.v * car.v) / (2 * 6);
-            if (toStop >= need - 0.5) stop = true;               // יכול לעצור — עוצר
+            if (toStop >= need - 0.5 || car.v < 1) stop = true;  // יכול לעצור (או כבר עומד) — עוצר
           } else {
             const crossOcc = L.axis === 'x' ? bx.j.occZ : bx.j.occX;
             if (crossOcc > 0 && toStop < 18) stop = true;
@@ -180,6 +180,14 @@
               // היציאה מהצומת חסומה — לא נכנסים (ואם זה בגלל פקק של ההפגנה, זה נחשב פקק)
               const ld = cars[i - 1];
               if (ld.d - ld.len < bx.d1 + car.len + 1.5 && ld.v < 1.5 && toStop < 25) { stop = true; if (ld.jammed) why = 'car'; }
+            }
+          }
+          // מישהו עומד ממש אחרי הצומת/מעבר החציה — עוצרים לפני, לא באמצע (אחרת המעבר נסגר להולכי רגל)
+          if (!stop && toStop < 25) {
+            for (const ob of lane.obs) {
+              if (ob.d + ob.r < bx.d0) continue;
+              if (ob.d - ob.r < bx.d1 + car.len + 1.5) { stop = true; why = ob.o.kind; }
+              break;
             }
           }
           if (stop) {

@@ -91,6 +91,10 @@
         if (best) {
           w.cmd('police', { type: 'target', squads: [p.id], target: best.sq.id });
           load.set(best.sq.id, (load.get(best.sq.id) || 0) + 1);
+        } else if (!p.moving && th.length && w.map.isRoad(pc.x, pc.z) && p.members.every(c => c.state === 'free')) {
+          // כל המטרות כבר מטופלות — לא נשארים לעמוד על הכביש
+          const sw = w.map.nearestSidewalk(pc.x, pc.z);
+          w.cmd('police', { type: 'move', squads: [p.id], x: sw.x, z: sw.z });
         } else if (!p.moving && !th.length) {
           // אין מה לפנות — עומדים על המדרכה ליד הצומת
           const b = w.map.bases.police.rally;
