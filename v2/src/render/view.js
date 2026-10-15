@@ -654,6 +654,12 @@
       this.laneHi = inst(laneGeo, this.mat(new T.MeshBasicMaterial({ color: 0xff4d3d, transparent: true, opacity: 0.28, depthWrite: false })), 12);
       this.laneHi.renderOrder = 1;
       R.add(this.laneHi);
+      // טבעות "בדרך": איפה יופיע כוח שהוזמן (משטרה בתחנה, הסעה ביעד)
+      const pendGeo = new T.RingGeometry(0.85, 1.0, 40); pendGeo.rotateX(-Math.PI / 2);
+      this.pendBlue = inst(pendGeo, this.mat(new T.MeshBasicMaterial({ color: 0x6ea2ff, transparent: true, opacity: 0.85, depthWrite: false })), 8);
+      this.pendGold = inst(pendGeo, this.mat(new T.MeshBasicMaterial({ color: 0xffd96b, transparent: true, opacity: 0.85, depthWrite: false })), 4);
+      this.pendBlue.renderOrder = 3; this.pendGold.renderOrder = 3;
+      R.add(this.pendBlue); R.add(this.pendGold);
       const mkGeo = new T.RingGeometry(0.9, 1.2, 32); mkGeo.rotateX(-Math.PI / 2);
       this.marker = new T.Mesh(mkGeo, this.mat(new T.MeshBasicMaterial({ color: 0x5ee37a, transparent: true, opacity: 0, depthWrite: false })));
       this.marker.renderOrder = 3;
@@ -899,6 +905,18 @@
         h.lamps[1].m.color.copy(st === 'Y' ? h.lamps[1].on : h.lamps[1].off);
         h.lamps[2].m.color.copy(st === 'G' ? h.lamps[2].on : h.lamps[2].off);
       }
+
+      // ---- כוחות בדרך ----
+      let pb = 0, pg = 0;
+      const pbase = w.map.bases.police;
+      for (const pd of w.pending) {
+        const k = 1 - Math.max(0, pd.at - w.t) / 9;              // מתכווץ ככל שמתקרב הרגע
+        const pulse = 1 + 0.15 * Math.sin(now * 6);
+        if (pd.bus) { if (pg < 4) setM(this.pendGold, pg++, pd.x, this.groundY(pd.x, pd.z) + 0.06, pd.z, 0, 0, 0, (6 - 3 * k) * pulse); }
+        else if (pb < 8) setM(this.pendBlue, pb++, pbase.x, CURB_H + 0.06 + pb * 0.01, pbase.z, 0, 0, 0, (5 + pb * 1.4 - 2 * k) * pulse);
+      }
+      this.pendBlue.count = pb; this.pendBlue.instanceMatrix.needsUpdate = true;
+      this.pendGold.count = pg; this.pendGold.instanceMatrix.needsUpdate = true;
 
       // ---- סמן יעד ----
       if (this.markerT > 0) {
