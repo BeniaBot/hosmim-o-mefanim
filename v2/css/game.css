@@ -201,8 +201,10 @@ button { font-family: inherit; cursor: pointer; }
 .floater { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); font-weight: 900; font-size: 16px; color: #ffd76a; text-shadow: 0 2px 4px rgba(0,0,0,0.7); white-space: nowrap; }
 
 /* מסך קטן */
-@media (max-width: 1100px) {
+@media (max-width: 1400px) {
   #newsPanel { display: none; }
+}
+@media (max-width: 1100px) {
   #minimap { width: 160px; height: 122px; }
   .card { width: 80px; }
 }

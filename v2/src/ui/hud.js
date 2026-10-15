@@ -312,11 +312,11 @@
         if (!p) { el.style.display = 'none'; continue; }
         const m = 90;
         const cx = U.clamp(p.x, m, st.w - m);
-        let cy = U.clamp(p.y, 130, st.h - 200);
+        let cy = U.clamp(p.y, 130, st.h - 240);   // מעל הלוחות התחתונים והרמז
         if (cx < 250 && cy < 305) cy = 305;   // לא מעל המיני-מפה
         // חץ לכיוון הכניסה כשהיא מחוץ למסך
         let arrow = '';
-        if (p.x < m) arrow = '◄'; else if (p.x > st.w - m) arrow = '►'; else if (p.y < 130) arrow = '▲'; else if (p.y > st.h - 200) arrow = '▼';
+        if (p.x < m) arrow = '◄'; else if (p.x > st.w - m) arrow = '►'; else if (p.y < 130) arrow = '▲'; else if (p.y > st.h - 240) arrow = '▼';
         const txt = `פקק ${km.toFixed(1)} ק"מ · ${arm.name}`;
         const key = txt + arrow;
         if (el.dataset.k !== key) {
